@@ -91,7 +91,7 @@ main (void) {
 	tss_init ();
 	gdt_init ();
 #endif
-
+	threading_started = true;
 	/* Initialize interrupt handlers. */
 	intr_init ();
 	timer_init ();

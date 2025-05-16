@@ -176,14 +176,28 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
+	char *token, *save_ptr;
+	token = strtok_r(file_name, " ", &save_ptr);
+	if (token == NULL) {
+		palloc_free_page(file_name);
+		return -1;
+	}
+
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	success = load (token, &_if);
+	if (!success) {
+		palloc_free_page(file_name);
+		return -1;
+	}
 
 	/* If load failed, quit. */
+	/*
 	palloc_free_page (file_name);
 	if (!success)
 		return -1;
+	*/
 
+	palloc_free_page(file_name);
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -204,6 +218,12 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	while (1)
+	{
+
+	}
+	
+
 	return -1;
 }
 
