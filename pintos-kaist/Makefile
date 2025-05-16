@@ -31,6 +31,15 @@ cscope:: cscope.files
 	cscope -b -q -k
 
 archive:: clean
+
+.PHONY: userp
+userp:
+	make clean && \
+	make -j && \
+	cd ./build && \
+	make check
+
+
 ifeq ($(shell echo ${TEAM} | egrep "^[1-9]{1}[0-9]{0,7}$$"),)
 	@echo "Check your team number: $(TEAM)"
 else
