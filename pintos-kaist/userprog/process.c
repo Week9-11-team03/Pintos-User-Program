@@ -58,17 +58,33 @@ process_create_initd (const char *file_name) {
 }
 
 /* A thread function that launches first user process. */
+/* PintOS 커널이 최초로 실행하는 사용자 프로세스를 시작하는 스레드 함수 
+  - 시스템 부팅 후 최초 사용자 프로세스(initd)를 생성하는 역할
+  - 메인 커널 스레드에서 직접 호출됨
+ */
 static void
-initd (void *f_name) {
+initd (void *f_name) {  // f_name: 실행할 프로그램 경로 (예: "/bin/ls")
 #ifdef VM
-	supplemental_page_table_init (&thread_current ()->spt);
+    /* 가상 메모리(VM) 기능이 활성화된 경우 */
+    supplemental_page_table_init (&thread_current ()->spt); 
+    /* 현재 스레드의 보조 페이지 테이블 초기화
+     * - supplemental_page_table: 물리 프레임 매핑 정보 관리
+     * - 페이지 폴트 발생 시 실제 데이터 로드를 위한 구조체 */
 #endif
 
-	process_init ();
+    process_init ();  /* 프로세스 관리 시스템 초기화
+                         - 프로세스 테이블, 자원 관리 구조체 설정
+                         - 시스템 콜 핸들러 준비 */
 
-	if (process_exec (f_name) < 0)
-		PANIC("Fail to launch initd\n");
-	NOT_REACHED ();
+    /* 사용자 프로그램 실행 시도 */
+    if (process_exec (f_name) < 0)  // f_name 프로그램 실행
+        PANIC("Fail to launch initd\n"); 
+        /* 실행 실패 시 커널 패닉
+           - 일반적으로 파일 없음/권한 문제/메모리 부족 시 발생 */
+
+    NOT_REACHED ();  /* 절대 도달하지 않는 코드 (컴파일러 경고 방지)
+                       - process_exec() 성공 시 프로세스 컨텍스트 전환
+                       - 실패 시 PANIC()에서 종료 */
 }
 
 /* Clones the current process as `name`. Returns the new process's thread id, or
@@ -162,42 +178,35 @@ error:
  * Returns -1 on fail. */
 int
 process_exec (void *f_name) {
-	char *file_name = f_name;
-	bool success;
+	char *file_name = f_name;		// f_name은 문자열인데 위에서 (void *)로 넘겨 받음
+	bool success;					
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
-	struct intr_frame _if;
+	struct intr_frame _if;			// intr_frame 내 구조체 멤버에 필요한 정보를 담음
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
 	/* We first kill the current context */
+	// 새로운 실행 파일을 현재 스레드에 담기 전에 먼저 현재 process에 담긴 context를 지워줌
+	// 지운다? -> 현재 프로세스에 할당된 page directory를 지운다.
 	process_cleanup ();
 
-	char *token, *save_ptr;
-	token = strtok_r(file_name, " ", &save_ptr);
-	if (token == NULL) {
-		palloc_free_page(file_name);
-		return -1;
-	}
-
 	/* And then load the binary */
-	success = load (token, &_if);
-	if (!success) {
-		palloc_free_page(file_name);
-		return -1;
-	}
+	// success는 bool type이니까 load에 성공하면 1, 실패하면 0을 반환
+	// 이때 file_name: f_name의 첫 문자열을 parsing하여 넘겨줘야 함 
+	success = load (file_name, &_if);
 
 	/* If load failed, quit. */
-	/*
-	palloc_free_page (file_name);
-	if (!success)
+	palloc_free_page (file_name);	// file_name: 프로그램 파일 받기 위해 만든 임시 변수
+	if (!success) {
 		return -1;
-	*/
+	}
 
-	palloc_free_page(file_name);
+	hex_dump(_if.rsp, _if.rsp, KERN_BASE - _if.rsp, true);
+
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -218,13 +227,12 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	while (1)
-	{
 
-	}
-	
-
-	return -1;
+	 while (1)
+	 {
+		//thread_yield();
+	 }
+	 
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -336,6 +344,8 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes,
 		bool writable);
 
+
+
 /* Loads an ELF executable from FILE_NAME into the current thread.
  * Stores the executable's entry point into *RIP
  * and its initial stack pointer into *RSP.
@@ -349,6 +359,20 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
+	// Project 2 : Command Line Parsing
+	char *arg_list[128];
+	char *token, *save_ptr;
+	int token_count = 0;
+
+	token = strtok_r(file_name, " ", &save_ptr);
+	arg_list[token_count] = token;
+
+	while (token != NULL) {
+		token = strtok_r(NULL, " ", &save_ptr);
+		token_count++;
+		arg_list[token_count] = token;
+	}
+	
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
@@ -436,6 +460,7 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+	argument_stack(arg_list, token_count, if_);
 
 	success = true;
 
@@ -445,6 +470,38 @@ done:
 	return success;
 }
 
+void argument_stack(char **argv, int argc, struct intr_frame *if_) {
+
+	char *arg_address[128];
+
+	for (int i = argc - 1; i >= 0; i--) {
+		int argv_len = strlen(argv[i]);
+		if_->rsp = if_->rsp - (argv_len + 1);
+		memcpy(if_->rsp, argv[i], argv_len + 1);
+		arg_address[i] = if_->rsp;
+	}
+
+	while (if_->rsp % 8 != 0) {
+		if_->rsp--;
+		*(uint8_t *) if_->rsp = 0;
+	}
+	
+	for (int i = argc; i >=0; i--) { // 여기서는 NULL 값 포인터도 같이 넣는다.
+		if_->rsp = if_->rsp - 8; // 8바이트만큼 내리고
+		if (i == argc) { // 가장 위에는 NULL이 아닌 0을 넣어야지
+			memset(if_->rsp, 0, sizeof(char **));
+		} else { // 나머지에는 arg_address 안에 들어있는 값 가져오기
+			memcpy(if_->rsp, &arg_address[i], sizeof(char **)); // char 포인터 크기: 8바이트
+		}	
+	}
+
+	/* fake return address */
+	if_->rsp = if_->rsp - 8; // void 포인터도 8바이트 크기
+	memset(if_->rsp, 0, sizeof(void *));
+
+	if_->R.rdi  = argc;
+	if_->R.rsi = if_->rsp + 8;
+}
 
 /* Checks whether PHDR describes a valid, loadable segment in
  * FILE and returns true if so, false otherwise. */

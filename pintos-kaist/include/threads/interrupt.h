@@ -37,11 +37,11 @@ struct gp_registers {
 struct intr_frame {
 	/* Pushed by intr_entry in intr-stubs.S.
 	   These are the interrupted task's saved registers. */
-	struct gp_registers R;
-	uint16_t es;
+	struct gp_registers R;			// 일반 목적 레지스터
+	uint16_t es;					// 세그먼트 레지스터
 	uint16_t __pad1;
 	uint32_t __pad2;
-	uint16_t ds;
+	uint16_t ds;					// 세그먼트 레지스터
 	uint16_t __pad3;
 	uint32_t __pad4;
 	/* Pushed by intrNN_stub in intr-stubs.S. */
@@ -52,13 +52,13 @@ struct intr_frame {
 	uint64_t error_code;
 /* Pushed by the CPU.
    These are the interrupted task's saved registers. */
-	uintptr_t rip;
-	uint16_t cs;
+	uintptr_t rip;					// 명령어 포인터
+	uint16_t cs;					// 코드 세그먼트
 	uint16_t __pad5;
 	uint32_t __pad6;
-	uint64_t eflags;
-	uintptr_t rsp;
-	uint16_t ss;
+	uint64_t eflags;				// CPU 상태 플래그
+	uintptr_t rsp;					// 스택 포인터
+	uint16_t ss;					// 스택 세그먼트
 	uint16_t __pad7;
 	uint32_t __pad8;
 } __attribute__((packed));

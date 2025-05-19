@@ -202,36 +202,52 @@ read_command_line (void) {
 
 /* Parses options in ARGV[]
    and returns the first non-option argument. */
+/* ARGV[]에서 옵션을 파싱하고 첫 번째 논-옵션 인자를 반환하는 함수 
+ * - 옵션은 '-'로 시작하는 인자들을 처리
+ * - '='를 기준으로 옵션 이름과 값 분리 (예: "-rs=123")
+ * - 지원하는 옵션 목록:
+ *   -h: 도움말 출력
+ *   -q: 종료 시 전원 끄기
+ *   -f: 파일 시스템 포맷 (FILESYS 정의 시 활성화)
+ *   -rs: 랜덤 시드 설정
+ *   -mlfqs: 다단계 피드백 큐 스케줄링 활성화
+ *   -ul: 사용자 프로그램 메모리 제한 설정 (USERPROG 정의 시)
+ *   -threads-tests: 스레드 테스트 모드 활성화 (USERPROG 정의 시)
+ */
 static char **
 parse_options (char **argv) {
-	for (; *argv != NULL && **argv == '-'; argv++) {
-		char *save_ptr;
-		char *name = strtok_r (*argv, "=", &save_ptr);
-		char *value = strtok_r (NULL, "", &save_ptr);
+    /* 옵션 인자 순회 ( '-'로 시작하는 동안 반복 ) */
+    for (; *argv != NULL && **argv == '-'; argv++) {
+        char *save_ptr;  // strtok_r 내부 상태 저장 포인터
+        char *name = strtok_r (*argv, "=", &save_ptr);  // '=' 기준 이름 분리
+        char *value = strtok_r (NULL, "", &save_ptr);   // 나머지 부분을 값으로 처리
 
-		if (!strcmp (name, "-h"))
-			usage ();
-		else if (!strcmp (name, "-q"))
-			power_off_when_done = true;
+        /* 옵션 이름 비교 및 처리 */
+        if (!strcmp (name, "-h"))         // 도움말 옵션
+            usage ();                     // 사용법 출력 후 종료
+        else if (!strcmp (name, "-q"))    // 종료 옵션
+            power_off_when_done = true;   // 작업 완료 후 전원 종료 플래그 설정
 #ifdef FILESYS
-		else if (!strcmp (name, "-f"))
-			format_filesys = true;
+        else if (!strcmp (name, "-f"))    // 파일시스템 포맷 옵션
+            format_filesys = true;        // 파일 시스템 초기화 시 포맷 수행
 #endif
-		else if (!strcmp (name, "-rs"))
-			random_init (atoi (value));
-		else if (!strcmp (name, "-mlfqs"))
-			thread_mlfqs = true;
+        else if (!strcmp (name, "-rs"))   // 랜덤 시드 설정
+            random_init (atoi (value));   // 문자열 값을 정수로 변환 후 전달
+        else if (!strcmp (name, "-mlfqs")) // MLFQ 스케줄링
+            thread_mlfqs = true;          // 다단계 피드백 큐 알고리즘 활성화
 #ifdef USERPROG
-		else if (!strcmp (name, "-ul"))
-			user_page_limit = atoi (value);
-		else if (!strcmp (name, "-threads-tests"))
-			thread_tests = true;
+        else if (!strcmp (name, "-ul"))   // 사용자 메모리 제한
+            user_page_limit = atoi (value); // 최대 페이지 수 설정
+        else if (!strcmp (name, "-threads-tests")) // 스레드 테스트 모드
+            thread_tests = true;          // 스레드 관련 테스트 코드 활성화
 #endif
-		else
-			PANIC ("unknown option `%s' (use -h for help)", name);
-	}
+        else  // 알 수 없는 옵션 처리
+            PANIC ("unknown option `%s' (use -h for help)", name);  // 커널 패닉 발생
+    }
 
-	return argv;
+    /* 옵션 처리 완료 후 남은 인자 포인터 반환 
+     * (예: "pintos run echo" 시 "run"과 "echo"가 남음) */
+    return argv;
 }
 
 /* Runs the task specified in ARGV[1]. */
