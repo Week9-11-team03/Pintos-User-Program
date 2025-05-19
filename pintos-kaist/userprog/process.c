@@ -205,7 +205,7 @@ process_exec (void *f_name) {
 		return -1;
 	}
 
-	hex_dump(_if.rsp, _if.rsp, KERN_BASE - _if.rsp, true);
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -228,10 +228,7 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 
-	 while (1)
-	 {
-		//thread_yield();
-	 }
+	timer_msleep(2000);
 	 
 }
 
@@ -359,7 +356,6 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
-	// Project 2 : Command Line Parsing
 	char *arg_list[128];
 	char *token, *save_ptr;
 	int token_count = 0;
@@ -461,7 +457,6 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
 	argument_stack(arg_list, token_count, if_);
-
 	success = true;
 
 done:
@@ -471,36 +466,46 @@ done:
 }
 
 void argument_stack(char **argv, int argc, struct intr_frame *if_) {
+	char *arg_addr[argc + 1];	// NULL 포함
 
-	char *arg_address[128];
-
+	// 1. 인자 문자열들 역순으로 스택에 복사
 	for (int i = argc - 1; i >= 0; i--) {
-		int argv_len = strlen(argv[i]);
-		if_->rsp = if_->rsp - (argv_len + 1);
-		memcpy(if_->rsp, argv[i], argv_len + 1);
-		arg_address[i] = if_->rsp;
+		int len = strlen(argv[i]) + 1;	// NULL 포함
+		if_->rsp -= len;
+		memcpy((void *)if_->rsp, argv[i], len);
+		arg_addr[i] = (char *)if_->rsp;	// 나중에 포인터 배열에 사용
 	}
 
+	// 2. padding: 8바이트 정렬
 	while (if_->rsp % 8 != 0) {
-		if_->rsp--;
-		*(uint8_t *) if_->rsp = 0;
-	}
-	
-	for (int i = argc; i >=0; i--) { // 여기서는 NULL 값 포인터도 같이 넣는다.
-		if_->rsp = if_->rsp - 8; // 8바이트만큼 내리고
-		if (i == argc) { // 가장 위에는 NULL이 아닌 0을 넣어야지
-			memset(if_->rsp, 0, sizeof(char **));
-		} else { // 나머지에는 arg_address 안에 들어있는 값 가져오기
-			memcpy(if_->rsp, &arg_address[i], sizeof(char **)); // char 포인터 크기: 8바이트
-		}	
+		if_->rsp--;		
+		*(uint8_t *)if_->rsp = 0;
 	}
 
-	/* fake return address */
-	if_->rsp = if_->rsp - 8; // void 포인터도 8바이트 크기
-	memset(if_->rsp, 0, sizeof(void *));
+	// 3. NULL sentinel (argv[argc] = NULL)
+	if_->rsp -= sizeof(char *);
+	*(char **)if_->rsp = NULL;
 
-	if_->R.rdi  = argc;
-	if_->R.rsi = if_->rsp + 8;
+	// 4. 포인터 배열 저장(argv[i])
+	for (int i = argc - 1; i >= 0; i--) {
+		if_->rsp -= sizeof(char *);
+		*(char **)if_->rsp = arg_addr[i];
+	}
+
+	// 5. 'argv' 주소를 위한 포인터 (즉, argv의 시작 주소)
+	char **argv_addr = (char **)if_->rsp;
+
+	// 6. argc push
+	if_->rsp -= sizeof(int);
+	*(int *)if_->rsp = argc;
+
+	// 7. fake return address (dummy)
+	if_->rsp -= sizeof(void *);
+	*(void **)if_->rsp = NULL;
+
+	// 8. 레지스터 설정
+	if_->R.rdi = argc;
+	if_->R.rsi = (uint64_t)argv_addr;
 }
 
 /* Checks whether PHDR describes a valid, loadable segment in
