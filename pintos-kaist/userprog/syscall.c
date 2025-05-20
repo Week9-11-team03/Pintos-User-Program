@@ -7,8 +7,9 @@
 #include "userprog/gdt.h"
 #include "threads/flags.h"
 #include "intrinsic.h"
-#include "threads/init.h"	// Project 2 : System Call
-#include "kernel/stdio.h"	// Project 2 : System Call
+// Project 2 : System Call
+#include "kernel/stdio.h"
+#include "threads/init.h"	
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -40,7 +41,6 @@ syscall_init (void) {
 }
 
 void halt() {
-	printf("halt called, about to power off\n");
 	power_off();
 }
 
@@ -52,36 +52,38 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 	return -1;
 }
 
+void exit(int status) {
+	struct thread *cur = thread_current();
+	cur->exit_status = status;
+	thread_exit();
+}
+
 /* The main system call interface */
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
-	printf("rax: %ld, rdi: %ld, rsi: %ld, rdx: %ld, r10: %ld, r8: %ld, r9: %ld\n", f->R.rax, f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9);
 	uint64_t syscall_number = f->R.rax;
 
 	switch (syscall_number) {
-	case SYS_WRITE:
-		printf("syscall : SYS_WRITE\n");
+	case SYS_HALT: {
+		halt();
+		break;
+	}
+	case SYS_WRITE: {
 		int fd = f->R.rdi;
-		const void *buffer = (const void *)f->R.rsi;
+		void *buffer = (void *)f->R.rsi;
 		size_t size = f->R.rdx;
 		f->R.rax = sys_write(fd, buffer, size);
 		break;
-	case SYS_HALT:
-		printf("syscall number: %lld\n", syscall_number);  // syscall_handler에서 출력
-		halt();
-		break;
-	case SYS_EXIT:
-		break;
-	case SYS_EXEC:
-		break;
-	case SYS_WAIT:
-		break;
-	default:
+	}
+	case SYS_WAIT: {
+		
+	}
+	default: {
 		printf ("system call!\n");
 		break;
 	}
-	
-	do_iret(f);
-	thread_exit ();
+	}
+
+	thread_exit ();		// 현재 스레드 종료 → 스케줄러가 알아서 다음 프로세스(e.g. 부모)를 실행
 }

@@ -228,10 +228,10 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 
-	//timer_msleep(2000);
-	while (1) {
-		;
-	}
+	timer_msleep(2000);
+	// while (1) {
+	// 	;
+	// }
 	
 }
 
