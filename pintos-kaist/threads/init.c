@@ -50,6 +50,7 @@ static bool format_filesys;
 bool power_off_when_done;
 
 bool thread_tests;
+bool threading_started = false;
 
 static void bss_init (void);
 static void paging_init (uint64_t mem_end);

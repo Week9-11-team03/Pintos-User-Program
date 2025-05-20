@@ -13,7 +13,7 @@
 #include "intrinsic.h"
 #ifdef USERPROG
 #include "userprog/process.h"
-//#include "tests.h"
+// #include "tests.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -135,6 +135,7 @@ void thread_start(void)
 
 	/* Wait for the idle thread to initialize idle_thread. */
 	sema_down(&idle_started);
+	threading_started = true;
 }
 
 /* Called by the timer interrupt handler at each timer tick.
@@ -218,9 +219,12 @@ tid_t thread_create(const char *name, int priority,
 	dprintf("[%p] thread unblocked \n", t);
 
 	struct thread *curr = thread_current();
-
-	if (t->priority > curr->priority)
+	if (threading_started && !intr_context() && t->priority > curr->priority)
+	{
 		thread_yield();
+	}
+	// if (t->priority > curr->priority)
+	// 	thread_yield();
 
 	return tid;
 }
@@ -347,11 +351,12 @@ void thread_set_priority(int new_priority)
 
 	thread_current()->origin_priority = thread_current()->priority = new_priority;
 	list_sort(&ready_list, cmp_priority, NULL);
-	
+
 	thread_current()->priority = get_max_priority(&(thread_current()->donations), thread_current()->origin_priority);
-
-
-	thread_yield();
+	if (threading_started && !intr_context())
+	{
+		thread_yield();
+	}
 }
 
 /* Returns the current thread's priority. */
@@ -635,9 +640,16 @@ allocate_tid(void)
 	static tid_t next_tid = 1;
 	tid_t tid;
 
-	lock_acquire(&tid_lock);
-	tid = next_tid++;
-	lock_release(&tid_lock);
+	if (threading_started)
+	{
+		lock_acquire(&tid_lock);
+		tid = next_tid++;
+		lock_release(&tid_lock);
+	}
+	else
+	{
+		tid = next_tid++;
+	}
 
 	return tid;
 }
