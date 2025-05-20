@@ -7,6 +7,7 @@
 #include "userprog/gdt.h"
 #include "threads/flags.h"
 #include "intrinsic.h"
+#include "threads/init.h"	// Project 2 : System Call
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -42,5 +43,28 @@ void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	printf ("system call!\n");
+
+	uint64_t syscall_number = f->R.rax;
+
+	switch (syscall_number) {
+	case SYS_HALT:
+		printf("syscall number: %lld\n", syscall_number);  // syscall_handler에서 출력
+		halt();
+		break;
+	case SYS_EXIT:
+		break;
+	case SYS_EXEC:
+		break;
+	case SYS_WAIT:
+		break;
+	default:
+		break;
+	}
+
 	thread_exit ();
+}
+
+void halt() {
+	printf("halt called, about to power off\n");
+	power_off();
 }

@@ -205,7 +205,7 @@ process_exec (void *f_name) {
 		return -1;
 	}
 
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
+	//hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -228,8 +228,11 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 
-	timer_msleep(2000);
-	 
+	//timer_msleep(2000);
+	while (1) {
+		;
+	}
+	
 }
 
 /* Exit the process. This function is called by thread_exit (). */
