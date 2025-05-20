@@ -38,9 +38,47 @@ syscall_init (void) {
 }
 
 /* The main system call interface */
-void
-syscall_handler (struct intr_frame *f UNUSED) {
-	// TODO: Your implementation goes here.
+void syscall_handler (struct intr_frame *f) {
 	printf ("system call!\n");
-	thread_exit ();
+	printf("rax: %ld, rdi: %ld, rsi: %ld, rdx: %ld, r10: %ld, r8: %ld, r9: %ld\n",
+	       f->R.rax, f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9);
+
+	int syscall_n = f->R.rax;
+
+	switch(syscall_n){
+		case SYS_HALT:
+			sys_halt();
+			break;
+		case SYS_EXIT:
+			sys_exit(f->R.rdi);
+			break;
+		case SYS_FORK:
+			f->R.rax = sys_fork(f->R.rdi, f);
+			break;
+		case SYS_OPEN:
+			f->R.rax = sys_open((const char *)f->R.rdi);
+			break;
+		default:
+			printf("Unknown syscall number: %d\n", syscall_n);
+			thread_exit(); // 예외 처리
+	}
+}
+
+
+
+//인자로 파일 디스크립터 fd, 버퍼 주소 buffer, 출력할 바이트 수 size를 받는다.
+int sys_write(int fd, const void *buffer, unsigned size){
+	
+	//fd == 1은 표준출력
+	//즉, 콘솔 창에 출력하는 경우 처리
+	if (fd == 1){
+		putbuf(buffer, size); // 주어진 버퍼의 내용을 size만큼 커널 콘솔에 출력
+		return size;
+	}
+	return -1;
+}
+
+void 
+sys_halt(void){
+	power_off();
 }
