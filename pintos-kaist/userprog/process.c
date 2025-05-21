@@ -60,6 +60,8 @@ tid_t process_create_initd(const char *file_name)
 	if (tid == TID_ERROR)
 		palloc_free_page(fn_copy);
 	return tid;
+
+
 }
 
 /* A thread function that launches first user process. */
@@ -69,6 +71,7 @@ initd(void *f_name)
 #ifdef VM
 	supplemental_page_table_init(&thread_current()->spt);
 #endif
+
 
 	process_init();
 
@@ -230,6 +233,7 @@ void process_exit(void)
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 	status_table[curr->tid] = curr->exit_status;
+	printf("%s: exit(%d)\n", name_table[curr->tid], curr->status);
 	process_cleanup();
 }
 

@@ -93,7 +93,7 @@ sys_halt(void){
 }
 
 void sys_exit(int status) {
-    printf("%s: exit(%d)\n", thread_name(), status);
+    //printf("%s: exit(%d)\n", thread_name(), status);
     thread_current()->exit_status = status;
     thread_exit();  // 이걸 호출해야 현재 유저 스레드 종료됨
 }
