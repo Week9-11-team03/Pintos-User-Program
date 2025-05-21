@@ -152,7 +152,7 @@ void do_iret (struct intr_frame *tf);
 void thread_sleep(int64_t local_tick);
 
 int64_t global_tick;
-void wakeup();
+void wakeup(void);
 void set_global_tick();
 int64_t get_min_tick();
 bool tick_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED); 

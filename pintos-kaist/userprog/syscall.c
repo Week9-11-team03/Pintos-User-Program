@@ -9,7 +9,8 @@
 #include "intrinsic.h"
 // Project 2 : System Call
 #include "kernel/stdio.h"
-#include "threads/init.h"	
+#include "threads/init.h"
+#include "userprog/process.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -63,7 +64,8 @@ void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	uint64_t syscall_number = f->R.rax;
-
+	//printf("rax: %ld, rdi: %ld, rsi: %ld, rdx: %ld, r10: %ld, r8: %ld, r9: %ld\n", f->R.rax, f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9);
+	
 	switch (syscall_number) {
 	case SYS_HALT: {
 		halt();
@@ -77,7 +79,14 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		break;
 	}
 	case SYS_WAIT: {
-		
+		tid_t tid = f->R.rdi;
+		f->R.rax = process_wait(tid);
+		break;
+	}
+	case SYS_EXIT: {
+		int status = f->R.rdi;
+		exit(status);
+		break;
 	}
 	default: {
 		printf ("system call!\n");
@@ -85,5 +94,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	}
 	}
 
-	thread_exit ();		// 현재 스레드 종료 → 스케줄러가 알아서 다음 프로세스(e.g. 부모)를 실행
+	do_iret(f);
+	//thread_exit ();
 }

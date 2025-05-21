@@ -27,6 +27,9 @@ static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
 
+int status_table[128];
+char *name_table[128];
+
 /* General process initializer for initd and other process. */
 static void
 process_init (void) {
@@ -227,23 +230,22 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-
 	timer_msleep(2000);
 	// while (1) {
 	// 	;
 	// }
-	
+	printf("%s: exit(%d)\n", name_table[child_tid], status_table[child_tid]);
 }
 
 /* Exit the process. This function is called by thread_exit (). */
 void
 process_exit (void) {
 	struct thread *curr = thread_current ();
+	status_table[curr->tid] = curr->exit_status;
 	/* TODO: Your code goes here.
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-
 	process_cleanup ();
 }
 
@@ -360,16 +362,18 @@ load (const char *file_name, struct intr_frame *if_) {
 	int i;
 
 	char *arg_list[128];
+	char fn_copy[256]; // file_name 복사용
 	char *token, *save_ptr;
 	int token_count = 0;
 
-	token = strtok_r(file_name, " ", &save_ptr);
-	arg_list[token_count] = token;
+	// file_name 복사본 생성
+	strlcpy(fn_copy, file_name, sizeof(fn_copy));
 
-	while (token != NULL) {
+	// strtok_r로 파싱 (fn_copy 사용)
+	token = strtok_r(fn_copy, " ", &save_ptr);
+	while (token != NULL && token_count < 128) {
+		arg_list[token_count++] = token;
 		token = strtok_r(NULL, " ", &save_ptr);
-		token_count++;
-		arg_list[token_count] = token;
 	}
 	
 	/* Allocate and activate page directory. */
@@ -379,7 +383,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	process_activate (thread_current ());
 
 	/* Open executable file. */
-	file = filesys_open (file_name);
+	file = filesys_open (arg_list[0]);
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
@@ -450,16 +454,18 @@ load (const char *file_name, struct intr_frame *if_) {
 		}
 	}
 
+	
 	/* Set up stack. */
 	if (!setup_stack (if_))
-		goto done;
-
+	goto done;
+	
 	/* Start address. */
 	if_->rip = ehdr.e_entry;
-
+	
 	/* TODO: Your code goes here.
-	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+	* TODO: Implement argument passing (see project2/argument_passing.html). */
 	argument_stack(arg_list, token_count, if_);
+	
 	success = true;
 
 done:
@@ -509,6 +515,11 @@ void argument_stack(char **argv, int argc, struct intr_frame *if_) {
 	// 8. 레지스터 설정
 	if_->R.rdi = argc;
 	if_->R.rsi = (uint64_t)argv_addr;
+
+	/* 9. 프로세스 이름 전역 테이블에 저장 */
+	name_table[thread_current()->tid] = malloc(strlen(argv[0]) + 1);
+	strlcpy(name_table[thread_current()->tid], argv[0], strlen(argv[0]) + 1);
+	
 }
 
 /* Checks whether PHDR describes a valid, loadable segment in
