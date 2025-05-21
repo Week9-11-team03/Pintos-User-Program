@@ -45,18 +45,20 @@ void halt() {
 	power_off();
 }
 
-int sys_write(int fd, const void *buffer, unsigned size) {
+int write(int fd, const void *buffer, unsigned size) {
 	if (fd == 1) {
 		putbuf(buffer, size);
-		return size;
 	}
-	return -1;
 }
 
 void exit(int status) {
-	struct thread *cur = thread_current();
-	cur->exit_status = status;
+	struct thread *curr = thread_current();
+	curr->exit_status = status;
 	thread_exit();
+}
+
+bool create(const char *file, unsigned initial_size) {
+	
 }
 
 /* The main system call interface */
@@ -72,10 +74,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		break;
 	}
 	case SYS_WRITE: {
-		int fd = f->R.rdi;
-		void *buffer = (void *)f->R.rsi;
-		size_t size = f->R.rdx;
-		f->R.rax = sys_write(fd, buffer, size);
+		write(f->R.rdi, f->R.rsi, f->R.rdx);
 		break;
 	}
 	case SYS_WAIT: {
@@ -86,6 +85,38 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_EXIT: {
 		int status = f->R.rdi;
 		exit(status);
+		break;
+	}
+	case SYS_CREATE: {
+
+		break;
+	}
+	case SYS_REMOVE: {
+
+		break;
+	}
+	case SYS_OPEN: {
+
+		break;
+	}
+	case SYS_FILESIZE: {
+		
+		break;
+	}
+	case SYS_READ: {
+
+		break;
+	}
+	case SYS_SEEK: {
+
+		break;
+	}
+	case SYS_TELL: {
+
+		break;
+	}
+	case SYS_CLOSE: {
+
 		break;
 	}
 	default: {

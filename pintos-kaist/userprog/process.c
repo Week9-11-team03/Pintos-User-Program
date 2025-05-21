@@ -18,6 +18,7 @@
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+#include "threads/synch.h"			// Project 2
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -29,6 +30,10 @@ static void __do_fork (void *);
 
 int status_table[128];
 char *name_table[128];
+int child_done;
+
+struct condition condition;
+struct lock lock;
 
 /* General process initializer for initd and other process. */
 static void
@@ -52,6 +57,10 @@ process_create_initd (const char *file_name) {
 	if (fn_copy == NULL)
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
+
+	child_done = 0;
+	cond_init(&condition);
+	lock_init(&lock);
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
@@ -226,15 +235,24 @@ process_exec (void *f_name) {
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) {
+process_wait (tid_t child_tid) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	timer_msleep(2000);
-	// while (1) {
-	// 	;
-	// }
+
+	thread_join(&condition, &lock);
+
 	printf("%s: exit(%d)\n", name_table[child_tid], status_table[child_tid]);
+	free(name_table[child_tid]);
+	return status_table[child_tid];
+}
+
+void thread_join(struct condition *cond, struct lock *lock) {
+	lock_acquire(lock);
+	while (child_done == 0) {
+		cond_wait(cond, lock);
+	}
+	lock_release(lock);
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -246,6 +264,15 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+	
+	lock_acquire(&lock);
+
+	status_table[curr->tid] = curr->exit_status;
+	child_done = 1;
+	cond_signal(&condition, &lock);
+	
+	lock_release(&lock);
+
 	process_cleanup ();
 }
 
