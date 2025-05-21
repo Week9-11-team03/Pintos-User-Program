@@ -27,6 +27,9 @@ static bool load(const char *file_name, struct intr_frame *if_);
 static void initd(void *f_name);
 static void __do_fork(void *);
 
+int status_table[128];
+char *name_table[128];
+
 /* General process initializer for initd and other process. */
 static void
 process_init(void)
@@ -51,6 +54,7 @@ tid_t process_create_initd(const char *file_name)
 		return TID_ERROR;
 	strlcpy(fn_copy, file_name, PGSIZE);
 
+	
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
@@ -73,7 +77,7 @@ initd(void *f_name)
 	NOT_REACHED();
 }
 
-/* Clones the current process as `name`. Returns the new process's thread id, or
+/* Clones the current process as name. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
 tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 {
@@ -149,7 +153,7 @@ __do_fork(void *aux)
 #endif
 
 	/* TODO: Your code goes here.
-	 * TODO: Hint) To duplicate the file object, use `file_duplicate`
+	 * TODO: Hint) To duplicate the file object, use file_duplicate
 	 * TODO:       in include/filesys/file.h. Note that parent should not return
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
@@ -192,8 +196,8 @@ int process_exec(void *f_name)
 	/* Start switched process. */
 	do_iret(&_if);
 	NOT_REACHED();
-}
 
+}
 /* Waits for thread TID to die and returns its exit status.  If
  * it was terminated by the kernel (i.e. killed due to an
  * exception), returns -1.  If TID is invalid or if it was not a
@@ -203,17 +207,20 @@ int process_exec(void *f_name)
  *
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
-int process_wait(tid_t child_tid UNUSED)
-{
+int
+process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	while (1)
-		thread_yield();
-	// timer_msleep(2000);
-	return -1;
-}
+	timer_msleep(2000);
+	// while (1) {
+	// 	;
+	// }
+	//printf ("%s: exit(%d)\n", name_table[child_tid], status_table[child_tid]);
+	//free(name_table[child_tid]);
+	return status_table[child_tid];
 
+}
 /* Exit the process. This function is called by thread_exit (). */
 void process_exit(void)
 {
@@ -222,7 +229,7 @@ void process_exit(void)
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-
+	status_table[curr->tid] = curr->exit_status;
 	process_cleanup();
 }
 
@@ -446,46 +453,60 @@ load(const char *file_name, struct intr_frame *if_)
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
-	for (i = argc - 1; i >= 0; i--)
-	{ // 주석은 첫 실행 후 주소 변화 정상 작동에 대해서.
-		size_t len = strlen(argv[i]) + 1;
-		if_->rsp -= len;
-		memcpy(if_->rsp, argv[i], len);
-		argv_address[i] = if_->rsp;
+	 for (i = argc - 1; i >= 0; i--)
+	 { // 주석은 첫 실행 후 주소 변화 정상 작동에 대해서.
+		 size_t len = strlen(argv[i]) + 1;
+		 if_->rsp -= len;
+		 memcpy(if_->rsp, argv[i], len);
+		 argv_address[i] = if_->rsp;
+	 }
+ 
+	 // if_->rsp = (uint64_t)if_->rsp & ~7;
+	 while (if_->rsp % 8 != 0)
+	 {
+		 if_->rsp--;
+		 *(uint8_t *)if_->rsp = 0;
+	 }
+ 
+	 // printf("argv address copying from %d\n", argc);
+	 for (i = argc; i >= 0; i--)
+	 {
+		 if_->rsp -= sizeof(char *);
+		 if (i == argc)
+		 {
+			 memset(if_->rsp, 0, 8);
+		 }
+		 else
+		 {
+			 memcpy(if_->rsp, &argv_address[i], 8);
+			 // printf("argv[%d] updating: %s\n", i, *(char **)if_->rsp);
+		 }
+	 }
+ 
+	 if_->R.rdi = argc;
+	 if_->R.rsi = if_->rsp;
+ 
+	 if_->rsp -= 8;
+	 memset(if_->rsp, 0, 8);
+
+	// name_table[thread_current()->tid] = malloc(strlen(argv[0]) + 1);
+	// strlcpy(name_table[thread_current()->tid], argv[0], strlen(argv[0]) + 1);
+
+	int tid = thread_current()->tid;
+	int index = tid % 128;
+	
+	if (name_table[index] != NULL) {
+		palloc_free_page(name_table[index]);
 	}
-
-	// if_->rsp = (uint64_t)if_->rsp & ~7;
-	while (if_->rsp % 8 != 0)
-	{
-		if_->rsp--;
-		*(uint8_t *)if_->rsp = 0;
+	name_table[index] = palloc_get_page(0);
+	if (name_table[index] != NULL) {
+		strlcpy(name_table[index], argv[0], PGSIZE);
 	}
+	//strlcpy(thread_current()->name, argv[0], sizeof thread_current()->name);
+	
 
-	for (i = argc; i >= 0; i--)
-	{
-		if_->rsp -= sizeof(char *);
-		if (i == argc)
-		{
-			memset(if_->rsp, 0, sizeof(char **));
-		}
-		else
-		{
-			memcpy(if_->rsp, &argv_address[i], sizeof(char **));
-		}
-	}
-
-	if_->R.rdi = argc;
-	if_->R.rsi = if_->rsp + 8;
-
-	if_->rsp -= 8;
-	memset(if_->rsp, 0, sizeof(void *));
-
-	// 총 스택의 사이즈는 어떻게 되지?
-	// fake return + 8 * argc 이러면 주소 영역은 다 볼 수 있음.
-	// 그냥 시작지점 if_->rsp를 기억한 상태에서 두 값의 차를 넘기면 되지 않나?
-	// enum intr_level oldlevel = intr_disable();
-	// intr_set_level(oldlevel);
 	success = true;
+
 
 done:
 	/* We arrive here whether the load is successful or not. */
