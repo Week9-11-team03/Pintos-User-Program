@@ -29,7 +29,7 @@ static void initd (void *f_name);
 static void __do_fork (void *);
 
 int status_table[128];
-char *name_table[128];
+char *userprog_name[128];
 int child_done;
 
 struct condition condition;
@@ -241,9 +241,7 @@ process_wait (tid_t child_tid) {
 	 * XXX:       implementing the process_wait. */
 
 	thread_join(&condition, &lock);
-
-	printf("%s: exit(%d)\n", name_table[child_tid], status_table[child_tid]);
-	free(name_table[child_tid]);
+	free(userprog_name[child_tid]);
 	return status_table[child_tid];
 }
 
@@ -259,20 +257,23 @@ void thread_join(struct condition *cond, struct lock *lock) {
 void
 process_exit (void) {
 	struct thread *curr = thread_current ();
-	status_table[curr->tid] = curr->exit_status;
 	/* TODO: Your code goes here.
-	 * TODO: Implement process termination message (see
-	 * TODO: project2/process_termination.html).
-	 * TODO: We recommend you to implement process resource cleanup here. */
-	
-	lock_acquire(&lock);
+	* TODO: Implement process termination message (see
+	* TODO: project2/process_termination.html).
+	* TODO: We recommend you to implement process resource cleanup here. */
 
-	status_table[curr->tid] = curr->exit_status;
-	child_done = 1;
-	cond_signal(&condition, &lock);
-	
-	lock_release(&lock);
+	if ((curr->name != NULL && 
+		userprog_name[curr->tid] != NULL) &&
+		!strcmp(curr->name, userprog_name[curr->tid])) {
+			lock_acquire(&lock);
 
+			status_table[curr->tid] = curr->exit_status;
+			child_done = 1;
+			cond_signal(&condition, &lock);
+			
+			lock_release(&lock);
+			printf("%s: exit(%d)\n", userprog_name[curr->tid], status_table[curr->tid]);
+		}
 	process_cleanup ();
 }
 
@@ -388,8 +389,8 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
-	char *arg_list[128];
-	char fn_copy[256]; // file_name 복사용
+	char *arg_list[32];
+	char *fn_copy[32]; // file_name 복사용
 	char *token, *save_ptr;
 	int token_count = 0;
 
@@ -479,6 +480,7 @@ load (const char *file_name, struct intr_frame *if_) {
 					goto done;
 				break;
 		}
+		strlcpy(t->name, fn_copy, strlen(file_name)+1);
 	}
 
 	
@@ -544,9 +546,8 @@ void argument_stack(char **argv, int argc, struct intr_frame *if_) {
 	if_->R.rsi = (uint64_t)argv_addr;
 
 	/* 9. 프로세스 이름 전역 테이블에 저장 */
-	name_table[thread_current()->tid] = malloc(strlen(argv[0]) + 1);
-	strlcpy(name_table[thread_current()->tid], argv[0], strlen(argv[0]) + 1);
-	
+	userprog_name[thread_current()->tid] = malloc(strlen(argv[0]) + 1);
+	strlcpy(userprog_name[thread_current()->tid], argv[0], strlen(argv[0]) + 1);
 }
 
 /* Checks whether PHDR describes a valid, loadable segment in

@@ -11,6 +11,8 @@
 #include "kernel/stdio.h"
 #include "threads/init.h"
 #include "userprog/process.h"
+#include "filesys/filesys.h"
+#include "threads/synch.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -28,8 +30,12 @@ void syscall_handler (struct intr_frame *);
 #define MSR_LSTAR 0xc0000082        /* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
 
+static struct lock filesys_lock;
+
 void
 syscall_init (void) {
+	lock_init(&filesys_lock);
+
 	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
 			((uint64_t)SEL_KCSEG) << 32);
 	write_msr(MSR_LSTAR, (uint64_t) syscall_entry);
@@ -61,6 +67,36 @@ bool create(const char *file, unsigned initial_size) {
 	
 }
 
+int open(const char *file) {
+	struct thread *curr = thread_current();
+
+	// 예외 처리
+	if (file == NULL || !is_user_vaddr(file) || pml4_get_page(curr->pml4, file) == NULL) {
+		exit(-1);
+	}
+
+	lock_acquire(&filesys_lock);
+	struct file *opened_file = filesys_open(file);
+	lock_release(&filesys_lock);
+
+	if (opened_file == NULL) {
+		return -1;
+	}
+	
+	int fd = curr->next_fd;
+	while (fd < 64 && curr->fdt[fd] != NULL) {
+		fd++;
+	}
+	
+	if (fd >= 64) {
+		return -1;
+	}
+
+	curr->fdt[fd] = opened_file;
+	curr->next_fd = fd + 1;
+	return fd;
+}
+
 /* The main system call interface */
 void
 syscall_handler (struct intr_frame *f UNUSED) {
@@ -87,36 +123,8 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		exit(status);
 		break;
 	}
-	case SYS_CREATE: {
-
-		break;
-	}
-	case SYS_REMOVE: {
-
-		break;
-	}
 	case SYS_OPEN: {
-
-		break;
-	}
-	case SYS_FILESIZE: {
-		
-		break;
-	}
-	case SYS_READ: {
-
-		break;
-	}
-	case SYS_SEEK: {
-
-		break;
-	}
-	case SYS_TELL: {
-
-		break;
-	}
-	case SYS_CLOSE: {
-
+		f->R.rax = open((const char *)f->R.rdi);
 		break;
 	}
 	default: {
@@ -125,6 +133,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	}
 	}
 
-	do_iret(f);
-	//thread_exit ();
+	//do_iret(f);	
+	//thread_exit();
 }

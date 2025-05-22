@@ -316,29 +316,30 @@ void thread_exit(void)
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 void thread_yield(void)
-{
-	struct thread *curr = thread_current();
-	enum intr_level old_level;
+{	
+	if (!intr_context()) {
+		struct thread *curr = thread_current();
+		enum intr_level old_level;
 
-	ASSERT(!intr_context());
+		ASSERT(!intr_context());
 
-	// intr_disable이 존재하는 이유
-	// `intr_disable()` 함수는 인터럽트를 비활성화하여, 임계 구역(critical section)에서
-	//  인터럽트로 인한 동시성 문제를 방지하기 위해 사용됩니다.
-	//  즉, 현재 실행 중인 코드가 인터럽트에 의해 중단되어 공유 자원(예: ready_list)을
-	// 여러 스레드가 동시에 접근하는 상황을 막기 위함입니다.
-	// 이 함수는 현재 인터럽트 상태를 저장하고 인터럽트를 꺼서,
-	// 임계 구역 내에서 원자적(atomic)으로 작업이 이루어지도록 보장합니다
-	old_level = intr_disable();
-	// idle_thread는 시스템에 실행 가능한 스레드가 하나도 없을 때 CPU를 차지하는 특수한 스레드입니다.
-	// 만약 idle_thread가 ready_list에 들어가게 되면,
-	// 스케줄러가 다음에 실행할 스레드를 고를 때 idle_thread가 불필요하게 선택될 수 있습니다.
-	// 이는 스케줄링의 의미를 훼손하고, idle_thread가 계속해서 ready_list에 남아 있게 되어 의도하지 않은 동작을 유발할 수 있습니다.
-	if (curr != idle_thread)
-		// list_push_back(&ready_list, &curr->elem);
-		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, NULL);
-	do_schedule(THREAD_READY);
-	intr_set_level(old_level);
+		// intr_disable이 존재하는 이유
+		// `intr_disable()` 함수는 인터럽트를 비활성화하여, 임계 구역(critical section)에서
+		//  인터럽트로 인한 동시성 문제를 방지하기 위해 사용됩니다.
+		//  즉, 현재 실행 중인 코드가 인터럽트에 의해 중단되어 공유 자원(예: ready_list)을
+		// 여러 스레드가 동시에 접근하는 상황을 막기 위함입니다.
+		// 이 함수는 현재 인터럽트 상태를 저장하고 인터럽트를 꺼서,
+		// 임계 구역 내에서 원자적(atomic)으로 작업이 이루어지도록 보장합니다
+		old_level = intr_disable();
+		// idle_thread는 시스템에 실행 가능한 스레드가 하나도 없을 때 CPU를 차지하는 특수한 스레드입니다.
+		// 만약 idle_thread가 ready_list에 들어가게 되면,
+		// 스케줄러가 다음에 실행할 스레드를 고를 때 idle_thread가 불필요하게 선택될 수 있습니다.
+		// 이는 스케줄링의 의미를 훼손하고, idle_thread가 계속해서 ready_list에 남아 있게 되어 의도하지 않은 동작을 유발할 수 있습니다.
+		if (curr != idle_thread)
+			list_insert_ordered(&ready_list, &curr->elem, cmp_priority, NULL);
+		do_schedule(THREAD_READY);
+		intr_set_level(old_level);
+	}
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -456,6 +457,13 @@ init_thread(struct thread *t, const char *name, int priority)
 	t->origin_priority = t->priority;
 	list_init(&t->donations);
 	t->wait_on_lock = NULL;
+
+	#ifdef USERPROG
+		for(int i = 0; i< 64; i++) {
+			t->fdt[i] = NULL;
+		}
+		t->next_fd = 2; // 0, 1, 2는 각각 stdin, stdout, stderr 예약
+	#endif
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

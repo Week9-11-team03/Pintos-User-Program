@@ -13,6 +13,7 @@
     "stdio.h": "c",
     "process.h": "c",
     "synch.h": "c",
-    "file.h": "c"
+    "file.h": "c",
+    "interrupt.h": "c"
   }
 }
