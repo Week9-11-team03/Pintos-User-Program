@@ -138,6 +138,10 @@ void close(int fd) {
 	lock_release(&filesys_lock);
 }
 
+int read (int fd, void *buffer, unsigned size) {
+	
+}
+
 /* The main system call interface */
 void
 syscall_handler (struct intr_frame *f UNUSED) {
@@ -174,6 +178,10 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		}
 		case SYS_CLOSE: {
 			close(f->R.rdi);
+			break;
+		}
+		case SYS_READ: {
+
 			break;
 		}
 		default: {
