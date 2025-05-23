@@ -13,6 +13,7 @@
 #include "userprog/process.h"
 #include "filesys/filesys.h"
 #include "threads/synch.h"
+#include "filesys/file.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -47,14 +48,39 @@ syscall_init (void) {
 			FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
 
+// 유저 포인터가 유효한지 검사
+void check_user_ptr(const void *ptr) {
+	if (ptr == NULL || !is_user_vaddr(ptr) || pml4_get_page(thread_current()->pml4, ptr) == NULL) {
+		exit(-1);
+	}
+}
+
 void halt() {
 	power_off();
 }
 
 int write(int fd, const void *buffer, unsigned size) {
+	struct thread *curr = thread_current();
+
+	check_user_ptr(buffer);
+
+	int bytes_written = 0;
+
 	if (fd == 1) {
 		putbuf(buffer, size);
+		bytes_written = size;
 	}
+	else if (fd >= 2 && fd < 64 && curr->fdt[fd] != NULL) {
+		struct file *file = curr->fdt[fd];
+		lock_acquire(&filesys_lock);
+		bytes_written = file_write(file, buffer, size);
+		lock_release(&filesys_lock);
+	} 
+	else {
+		return -1;
+	}
+
+	return bytes_written;
 }
 
 void exit(int status) {
@@ -64,16 +90,14 @@ void exit(int status) {
 }
 
 bool create(const char *file, unsigned initial_size) {
-	
+	check_user_ptr(file);
+	return filesys_create(file, initial_size);
 }
 
 int open(const char *file) {
 	struct thread *curr = thread_current();
 
-	// 예외 처리
-	if (file == NULL || !is_user_vaddr(file) || pml4_get_page(curr->pml4, file) == NULL) {
-		exit(-1);
-	}
+	check_user_ptr(file);
 
 	lock_acquire(&filesys_lock);
 	struct file *opened_file = filesys_open(file);
@@ -102,37 +126,38 @@ void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	uint64_t syscall_number = f->R.rax;
-	//printf("rax: %ld, rdi: %ld, rsi: %ld, rdx: %ld, r10: %ld, r8: %ld, r9: %ld\n", f->R.rax, f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9);
+	// printf("rax: %ld, rdi: %ld, rsi: %ld, rdx: %ld, r10: %ld, r8: %ld, r9: %ld\n", f->R.rax, f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9);
 	
 	switch (syscall_number) {
-	case SYS_HALT: {
-		halt();
-		break;
+		case SYS_HALT: {
+			halt();
+			break;
+		}
+		case SYS_WRITE: {
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		}
+		case SYS_WAIT: {
+			tid_t tid = f->R.rdi;
+			f->R.rax = process_wait(tid);
+			break;
+		}
+		case SYS_EXIT: {
+			int status = f->R.rdi;
+			exit(status);
+			break;
+		}
+		case SYS_OPEN: {
+			f->R.rax = open((const char *)f->R.rdi);
+			break;
+		}
+		case SYS_CREATE: {
+			f->R.rax = create((const char *)f->R.rdi, f->R.rsi);
+			break;
+		}
+		default: {
+			printf ("system call!\n");
+			break;
+		}
 	}
-	case SYS_WRITE: {
-		write(f->R.rdi, f->R.rsi, f->R.rdx);
-		break;
-	}
-	case SYS_WAIT: {
-		tid_t tid = f->R.rdi;
-		f->R.rax = process_wait(tid);
-		break;
-	}
-	case SYS_EXIT: {
-		int status = f->R.rdi;
-		exit(status);
-		break;
-	}
-	case SYS_OPEN: {
-		f->R.rax = open((const char *)f->R.rdi);
-		break;
-	}
-	default: {
-		printf ("system call!\n");
-		break;
-	}
-	}
-
-	//do_iret(f);	
-	//thread_exit();
 }

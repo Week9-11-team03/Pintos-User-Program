@@ -6,6 +6,22 @@ Acceptable output:
   (close-twice) open "sample.txt"
   (close-twice) close "sample.txt"
   (close-twice) close "sample.txt" again
+  (close-twice) end
+  close-twice: exit(0)
+Differences in `diff -u' format:
+  (close-twice) begin
+  (close-twice) open "sample.txt"
+  (close-twice) close "sample.txt"
++ system call!
+  (close-twice) close "sample.txt" again
++ system call!
+  (close-twice) end
+  close-twice: exit(0)
+Acceptable output:
+  (close-twice) begin
+  (close-twice) open "sample.txt"
+  (close-twice) close "sample.txt"
+  (close-twice) close "sample.txt" again
   close-twice: exit(-1)
 Differences in `diff -u' format:
   (close-twice) begin
@@ -17,19 +33,3 @@ Differences in `diff -u' format:
 + system call!
 + (close-twice) end
 + close-twice: exit(0)
-Acceptable output:
-  (close-twice) begin
-  (close-twice) open "sample.txt"
-  (close-twice) close "sample.txt"
-  (close-twice) close "sample.txt" again
-  (close-twice) end
-  close-twice: exit(0)
-Differences in `diff -u' format:
-  (close-twice) begin
-  (close-twice) open "sample.txt"
-  (close-twice) close "sample.txt"
-+ system call!
-  (close-twice) close "sample.txt" again
-+ system call!
-  (close-twice) end
-  close-twice: exit(0)
