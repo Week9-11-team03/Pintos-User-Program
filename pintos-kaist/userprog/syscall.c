@@ -121,6 +121,23 @@ int open(const char *file) {
 	return fd;
 }
 
+/*	Close file descriptor fd
+	Use void file_close(struct file *file)*/
+void close(int fd) {
+	struct thread *curr = thread_current();
+
+	if (fd < 2 || fd >= 64 || curr->fdt[fd] == NULL) {
+		exit(-1);
+	}
+
+	struct file *file = curr->fdt[fd];
+	curr->fdt[fd] = NULL;
+
+	lock_acquire(&filesys_lock);
+	file_close(file);
+	lock_release(&filesys_lock);
+}
+
 /* The main system call interface */
 void
 syscall_handler (struct intr_frame *f UNUSED) {
@@ -153,6 +170,10 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		}
 		case SYS_CREATE: {
 			f->R.rax = create((const char *)f->R.rdi, f->R.rsi);
+			break;
+		}
+		case SYS_CLOSE: {
+			close(f->R.rdi);
 			break;
 		}
 		default: {
