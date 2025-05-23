@@ -5,5 +5,9 @@
       "args": ["--rcfile", "${workspaceFolder}/.vscode/bash-with-activate"]
     }
   },
-  "terminal.integrated.defaultProfile.linux": "bash-with-activate"
+  "terminal.integrated.defaultProfile.linux": "bash-with-activate",
+  "files.associations": {
+    "process.h": "c",
+    "synch.h": "c"
+  }
 }

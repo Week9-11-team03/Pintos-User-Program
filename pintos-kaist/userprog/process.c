@@ -27,8 +27,8 @@ static bool load(const char *file_name, struct intr_frame *if_);
 static void initd(void *f_name);
 static void __do_fork(void *);
 
-int status_table[128];
-char *name_table[128];
+// int status_table[128];
+// char *name_table[128];
 
 /* General process initializer for initd and other process. */
 static void
@@ -53,6 +53,10 @@ tid_t process_create_initd(const char *file_name)
 	if (fn_copy == NULL)
 		return TID_ERROR;
 	strlcpy(fn_copy, file_name, PGSIZE);
+
+	child_done = 0;
+	cond_init(&condition);
+	lock_init(&lock);
 
 	
 	/* Create a new thread to execute FILE_NAME. */
@@ -224,6 +228,19 @@ process_wait (tid_t child_tid UNUSED) {
 	return status_table[child_tid];
 
 }
+
+/* condition과 lock을 기반으로 특정 플래그를 기다리는 join 함수 */
+void thread_join(struct condition *cond, struct lock *lock)
+{
+	lock_acquire(lock);
+	while (child_done == 0)
+	{
+		cond_wait(cond, lock);
+	}
+	lock_release(lock);
+}
+
+
 /* Exit the process. This function is called by thread_exit (). */
 void process_exit(void)
 {
@@ -232,8 +249,19 @@ void process_exit(void)
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	status_table[curr->tid] = curr->exit_status;
-	printf("%s: exit(%d)\n", name_table[curr->tid], curr->status);
+	if((curr->name != NULL && name_table[curr->tid] != NULL) && !strcmp(curr->name, name_table[curr->tid]))
+	{
+		lock_acquire(&lock);
+
+		status_table[thread_current()->tid] = thread_current()->status_code; // set status_table of child thread
+		child_done = 1;
+		cond_signal(&condition, &lock);
+
+		lock_release(&lock);
+		printf("%s: exit(%d)\n", name_table[curr->tid], status_table[curr->tid]);
+	}
+	// status_table[curr->tid] = curr->exit_status;
+	// printf("%s: exit(%d)\n", name_table[curr->tid], curr->status);
 	process_cleanup();
 }
 
@@ -507,8 +535,10 @@ load(const char *file_name, struct intr_frame *if_)
 		strlcpy(name_table[index], argv[0], PGSIZE);
 	}
 	//strlcpy(thread_current()->name, argv[0], sizeof thread_current()->name);
-	
+	strlcpy(t->name, file_name, strlen(file_name)+1);
 
+	t->fd_cnt = 2; 
+	
 	success = true;
 
 

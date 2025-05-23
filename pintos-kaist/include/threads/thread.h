@@ -27,7 +27,7 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-
+#define FD_LIMIT 64
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -92,7 +92,7 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 	int origin_priority;                       /* Priority. */
-	int exit_status;
+	//int exit_status;
 	int64_t local_tick;
 
 	/* Shared between thread.c and synch.c. */
@@ -101,6 +101,7 @@ struct thread {
 	struct list donations;
 	struct lock *wait_on_lock; 
 
+	
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -114,6 +115,10 @@ struct thread {
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
+	int status_code;
+	//struct file *fd_table[10];
+	struct file *fdt[FD_LIMIT];
+	int fd_cnt;
 };
 
 /* If false (default), use round-robin scheduler.
@@ -158,4 +163,5 @@ void set_global_tick();
 int64_t get_min_tick();
 bool tick_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED); 
 bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
 #endif /* threads/thread.h */
