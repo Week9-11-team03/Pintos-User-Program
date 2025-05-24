@@ -15,5 +15,14 @@ Putting 'sample.txt' into the file system...
 Executing 'fork-close':
 (fork-close) begin
 (fork-close) open "sample.txt"
-system call!
-TIMEOUT
+fork-close: exit(-1)
+Execution of 'fork-close' complete.
+Timer: 60 ticks
+Thread: 33 idle ticks, 28 kernel ticks, 0 user ticks
+hd0:0: 0 reads, 0 writes
+hd0:1: 121 reads, 258 writes
+hd1:0: 110 reads, 0 writes
+Console: 924 characters output
+Keyboard: 0 keys pressed
+Exception: 0 page faults
+Powering off...

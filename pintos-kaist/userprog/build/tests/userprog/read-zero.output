@@ -15,16 +15,15 @@ Putting 'sample.txt' into the file system...
 Executing 'read-zero':
 (read-zero) begin
 (read-zero) open "sample.txt"
-system call!
-(read-zero) read() returned 9 instead of 0: FAILED
-read-zero: exit(1)
+(read-zero) end
+read-zero: exit(0)
 Execution of 'read-zero' complete.
 Timer: 60 ticks
-Thread: 36 idle ticks, 23 kernel ticks, 1 user ticks
+Thread: 33 idle ticks, 26 kernel ticks, 1 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 111 reads, 248 writes
 hd1:0: 105 reads, 0 writes
-Console: 979 characters output
+Console: 931 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

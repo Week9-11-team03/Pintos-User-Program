@@ -86,7 +86,9 @@ filesys_open (const char *name) {
 		dir_lookup (dir, name, &inode);
 	dir_close (dir);
 
-	return file_open (inode);
+	struct file * result = file_open (inode);
+	
+	return result;
 }
 
 /* Deletes the file named NAME.

@@ -272,7 +272,6 @@ process_exit (void) {
 			cond_signal(&condition, &lock);
 			
 			lock_release(&lock);
-			printf("%s: exit(%d)\n", userprog_name[curr->tid], status_table[curr->tid]);
 		}
 	process_cleanup ();
 }

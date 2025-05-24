@@ -459,7 +459,7 @@ init_thread(struct thread *t, const char *name, int priority)
 	t->wait_on_lock = NULL;
 
 	#ifdef USERPROG
-		for(int i = 0; i< 64; i++) {
+		for(int i = 0; i < 64; i++) {
 			t->fdt[i] = NULL;
 		}
 		t->next_fd = 2; // 0, 1, 2는 각각 stdin, stdout, stderr 예약

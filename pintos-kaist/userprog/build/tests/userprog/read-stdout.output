@@ -13,16 +13,15 @@ Boot complete.
 Putting 'read-stdout' into the file system...
 Executing 'read-stdout':
 (read-stdout) begin
-system call!
 (read-stdout) end
 read-stdout: exit(0)
 Execution of 'read-stdout' complete.
 Timer: 59 ticks
-Thread: 34 idle ticks, 25 kernel ticks, 0 user ticks
+Thread: 35 idle ticks, 24 kernel ticks, 0 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 80 reads, 232 writes
 hd1:0: 102 reads, 0 writes
-Console: 869 characters output
+Console: 856 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

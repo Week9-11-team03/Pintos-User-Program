@@ -14,6 +14,7 @@
 #include "filesys/filesys.h"
 #include "threads/synch.h"
 #include "filesys/file.h"
+#include "devices/input.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -55,6 +56,17 @@ void check_user_ptr(const void *ptr) {
 	}
 }
 
+// 유효한 fd인지 확인 후, 해당 파일 포인터를 반환
+static struct file *get_valid_file(int fd) {
+	struct thread *curr = thread_current();
+
+	if (fd >= 64 || curr->fdt[fd] == NULL) {
+		exit(-1);
+	}
+
+	return curr->fdt[fd];
+}
+
 void halt() {
 	power_off();
 }
@@ -86,6 +98,7 @@ int write(int fd, const void *buffer, unsigned size) {
 void exit(int status) {
 	struct thread *curr = thread_current();
 	curr->exit_status = status;
+	printf("%s: exit(%d)\n", thread_name(), status);
 	thread_exit();
 }
 
@@ -95,42 +108,33 @@ bool create(const char *file, unsigned initial_size) {
 }
 
 int open(const char *file) {
-	struct thread *curr = thread_current();
+	check_user_ptr(file); 
 
-	check_user_ptr(file);
-
-	lock_acquire(&filesys_lock);
 	struct file *opened_file = filesys_open(file);
-	lock_release(&filesys_lock);
-
+	
 	if (opened_file == NULL) {
 		return -1;
 	}
-	
-	int fd = curr->next_fd;
-	while (fd < 64 && curr->fdt[fd] != NULL) {
-		fd++;
-	}
-	
-	if (fd >= 64) {
-		return -1;
-	}
 
-	curr->fdt[fd] = opened_file;
-	curr->next_fd = fd + 1;
-	return fd;
+	struct thread *curr = thread_current();
+
+	int fd;
+	for (fd = 2; fd < 64; fd++) {
+		if (curr->fdt[fd] == NULL) {
+			curr->fdt[fd] = opened_file;
+			return fd;
+		}
+	}
+	
+	file_close(opened_file);  
+	return -1;
 }
 
 /*	Close file descriptor fd
 	Use void file_close(struct file *file)*/
 void close(int fd) {
 	struct thread *curr = thread_current();
-
-	if (fd < 2 || fd >= 64 || curr->fdt[fd] == NULL) {
-		exit(-1);
-	}
-
-	struct file *file = curr->fdt[fd];
+	struct file *file = get_valid_file(fd);
 	curr->fdt[fd] = NULL;
 
 	lock_acquire(&filesys_lock);
@@ -138,8 +142,33 @@ void close(int fd) {
 	lock_release(&filesys_lock);
 }
 
+int filesize (int fd) {
+	struct file *file = get_valid_file(fd);
+	return file_length(file);
+}
+
 int read (int fd, void *buffer, unsigned size) {
+	struct thread *curr = thread_current();
+	check_user_ptr(buffer);
+
+	if (fd == 0) {
+		for (int i =0; i < size; i++) {
+			((char *)buffer)[i] = input_getc();
+		}
+		return size;
+	} 
+	else if (fd >= 2 && fd < 64 && curr->fdt[fd] != NULL) {
+		struct file *file = get_valid_file(fd);
 	
+		lock_acquire(&filesys_lock);
+		int bytes_read = file_read(file, buffer, size);
+		lock_release(&filesys_lock);
+	
+		return bytes_read;
+	} 
+	else {
+		return -1;
+	}
 }
 
 /* The main system call interface */
@@ -151,7 +180,11 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	
 	switch (syscall_number) {
 		case SYS_HALT: {
-			halt();
+			halt();			// PintOS 종료
+			break;
+		}
+		case SYS_EXIT: {
+			exit(f->R.rdi);	// Process 종료
 			break;
 		}
 		case SYS_WRITE: {
@@ -161,11 +194,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_WAIT: {
 			tid_t tid = f->R.rdi;
 			f->R.rax = process_wait(tid);
-			break;
-		}
-		case SYS_EXIT: {
-			int status = f->R.rdi;
-			exit(status);
 			break;
 		}
 		case SYS_OPEN: {
@@ -181,12 +209,15 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		}
 		case SYS_READ: {
-
+			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		}
+		case SYS_FILESIZE: {
+			f->R.rax = filesize(f->R.rdi);
 			break;
 		}
 		default: {
-			printf ("system call!\n");
-			break;
+			exit(-1);
 		}
 	}
 }
