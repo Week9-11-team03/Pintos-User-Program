@@ -94,17 +94,15 @@ struct thread {
 	int priority;                       /* Priority. */
 	int origin_priority;                /* Priority. */
 	int64_t local_tick;
-	int exit_status;					/* 종료 상태 */
 	struct lock fdt_lock;
-
+	
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 	struct list_elem d_elem;              /* List element. */
 	struct list donations;
 	struct lock *wait_on_lock; 
-
-
-#ifdef USERPROG
+	
+	#ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
 	#endif
@@ -116,6 +114,7 @@ struct thread {
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
+	int exit_status;					/* 종료 상태 */
 	struct file *fdt[64];				/* File Descriptor Table*/
 	int next_fd;
 };
