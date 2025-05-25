@@ -60,11 +60,16 @@ void check_user_ptr(const void *ptr) {
 static struct file *get_valid_file(int fd) {
 	struct thread *curr = thread_current();
 
+	struct file *file;
+	lock_acquire(&curr->fdt_lock);
 	if (fd >= 64 || curr->fdt[fd] == NULL) {
+		lock_release(&curr->fdt_lock);
 		exit(-1);
 	}
+	file = curr->fdt[fd];
+	lock_release(&curr->fdt_lock);
 
-	return curr->fdt[fd];
+	return file;
 }
 
 void halt() {
@@ -82,8 +87,8 @@ int write(int fd, const void *buffer, unsigned size) {
 		putbuf(buffer, size);
 		bytes_written = size;
 	}
-	else if (fd >= 2 && fd < 64 && curr->fdt[fd] != NULL) {
-		struct file *file = curr->fdt[fd];
+	else if (fd >= 2 && fd < 64) {
+		struct file *file = get_valid_file(fd);
 		lock_acquire(&filesys_lock);
 		bytes_written = file_write(file, buffer, size);
 		lock_release(&filesys_lock);
@@ -118,28 +123,45 @@ int open(const char *file) {
 
 	struct thread *curr = thread_current();
 
-	int fd;
-	for (fd = 2; fd < 64; fd++) {
-		if (curr->fdt[fd] == NULL) {
-			curr->fdt[fd] = opened_file;
-			return fd;
+	int fd = -1;
+
+	lock_acquire(&curr->fdt_lock);
+
+	for (int i = 2; i < 64; i++) {
+		if (curr->fdt[i] == NULL) {
+			curr->fdt[i] = opened_file;
+			fd = i;
+			break;
 		}
 	}
-	
-	file_close(opened_file);  
-	return -1;
+
+	lock_release(&curr->fdt_lock);
+
+	if (fd == -1){
+		file_close(opened_file); 
+	}
+	return fd;
 }
 
 /*	Close file descriptor fd
 	Use void file_close(struct file *file)*/
 void close(int fd) {
 	struct thread *curr = thread_current();
-	struct file *file = get_valid_file(fd);
-	curr->fdt[fd] = NULL;
 
-	lock_acquire(&filesys_lock);
-	file_close(file);
-	lock_release(&filesys_lock);
+	struct file *file;
+
+    lock_acquire(&curr->fdt_lock);
+    if (fd >= 64 || curr->fdt[fd] == NULL) {
+        lock_release(&curr->fdt_lock);
+        exit(-1);
+    }
+    file = curr->fdt[fd];
+    curr->fdt[fd] = NULL;
+    lock_release(&curr->fdt_lock);
+
+    lock_acquire(&filesys_lock);
+    file_close(file);
+    lock_release(&filesys_lock);
 }
 
 int filesize (int fd) {
@@ -157,7 +179,7 @@ int read (int fd, void *buffer, unsigned size) {
 		}
 		return size;
 	} 
-	else if (fd >= 2 && fd < 64 && curr->fdt[fd] != NULL) {
+	else if (fd >= 2 && fd < 64) {
 		struct file *file = get_valid_file(fd);
 	
 		lock_acquire(&filesys_lock);

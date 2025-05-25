@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -94,6 +95,7 @@ struct thread {
 	int origin_priority;                /* Priority. */
 	int64_t local_tick;
 	int exit_status;					/* 종료 상태 */
+	struct lock fdt_lock;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
