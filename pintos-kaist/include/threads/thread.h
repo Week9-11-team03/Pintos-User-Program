@@ -10,6 +10,9 @@
 #include "vm/vm.h"
 #endif
 
+// Project 2 : FDT 상수 정의
+#define FDT_PAGES 3
+#define FDCOUNT_LIMIT (FDT_PAGES * (1 << 9))	// 페이지당 512개 엔트리
 
 /* States in a thread's life cycle. */
 enum thread_status {
@@ -116,16 +119,20 @@ struct thread {
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
 	int status_code;
-	struct file *fd_table[MAX_FD];
+	struct file **fd_table;
 	int next_fd;
 	struct file *running_file;
 	struct thread *parent_process; 
 	struct list childs;
 	struct list_elem child_elem;
+	
+	struct semaphore wait_sema;
+	struct semaphore fork_sema;
+	struct semaphore exit_sema;
 
-	struct condition condition;
-	struct lock lock;
-	int done;
+	// struct condition condition;
+	// struct lock lock;
+	// int done;
 };
 
 /* If false (default), use round-robin scheduler.

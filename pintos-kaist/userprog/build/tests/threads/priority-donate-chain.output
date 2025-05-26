@@ -1,0 +1,56 @@
+Kernel command line: -q -threads-tests -f run priority-donate-chain
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  130,867,200 loops/s.
+hd0:0: detected 321 sector (160 kB) disk, model "QEMU HARDDISK", serial "QM00001"
+hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
+Formatting file system...done.
+Boot complete.
+Executing 'priority-donate-chain':
+(priority-donate-chain) begin
+(priority-donate-chain) main got lock.
+(priority-donate-chain) main should have priority 3.  Actual priority: 3.
+(priority-donate-chain) main should have priority 6.  Actual priority: 6.
+(priority-donate-chain) main should have priority 9.  Actual priority: 9.
+(priority-donate-chain) main should have priority 12.  Actual priority: 12.
+(priority-donate-chain) main should have priority 15.  Actual priority: 15.
+(priority-donate-chain) main should have priority 18.  Actual priority: 18.
+(priority-donate-chain) main should have priority 21.  Actual priority: 21.
+(priority-donate-chain) thread 1 got lock
+(priority-donate-chain) thread 1 should have priority 21. Actual priority: 21
+(priority-donate-chain) thread 2 got lock
+(priority-donate-chain) thread 2 should have priority 21. Actual priority: 21
+(priority-donate-chain) thread 3 got lock
+(priority-donate-chain) thread 3 should have priority 21. Actual priority: 21
+(priority-donate-chain) thread 4 got lock
+(priority-donate-chain) thread 4 should have priority 21. Actual priority: 21
+(priority-donate-chain) thread 5 got lock
+(priority-donate-chain) thread 5 should have priority 21. Actual priority: 21
+(priority-donate-chain) thread 6 got lock
+(priority-donate-chain) thread 6 should have priority 21. Actual priority: 21
+(priority-donate-chain) thread 7 got lock
+(priority-donate-chain) thread 7 should have priority 21. Actual priority: 21
+(priority-donate-chain) thread 7 finishing with priority 21.
+Page fault at 0xd: not present error reading page in kernel context.
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800421f16d
+ cr2=000000000000000d error=               0
+rax 0000000000000001 rbx 0000000000000000 rcx 0000008004272028 rdx 0000000000000008
+rsp 0000008004272f70 rbp 0000008004272f80 rsi 0000008004272028 rdi 0000000000000001
+rip 000000800421f16d r8 0000008004272eb8  r9 000000800421b5c1 r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../userprog/exception.c:97 in kill(): Kernel bug - unexpected interrupt in kernel
+Call stack: 0x8004218148 0x800421ce4a 0x800421cfc9 0x8004208fd6 0x80042093f4 0x800421ef40 0x800421be72 0x8004207283 0x80042075c2.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 61 ticks
+Thread: 31 idle ticks, 30 kernel ticks, 0 user ticks
+hd0:0: 0 reads, 0 writes
+hd0:1: 9 reads, 18 writes
+Console: 3086 characters output
+Key

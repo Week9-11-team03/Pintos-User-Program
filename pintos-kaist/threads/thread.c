@@ -201,6 +201,21 @@ tid_t thread_create(const char *name, int priority,
 	tid = t->tid = allocate_tid();
 	dprintf("[%p] tid allocated %d\n", t, tid);
 
+	#ifdef USERPROG
+		t->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
+		if (t->fd_table == NULL) {
+			return TID_ERROR;
+		}
+		t->status_code = 0;
+
+		t->next_fd = 3;
+		t->fd_table[0] = 0;
+		t->fd_table[1] = 1;
+		t->fd_table[2] = 2;
+		
+		list_push_back(&thread_current()->childs, &t->child_elem);
+	#endif
+
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
 	t->tf.rip = (uintptr_t)kernel_thread;
@@ -464,9 +479,20 @@ init_thread(struct thread *t, const char *name, int priority)
 	list_init(&t->donations);
 	list_init(&t->childs);
 	t->wait_on_lock = NULL;
-	t->done = 0;
-	cond_init(&t->condition);
-	lock_init(&t->lock);
+	// t->done = 0;
+	// cond_init(&t->condition);
+	// lock_init(&t->lock);
+	
+	#ifdef USERPROG
+		t->status_code = 0;
+		t->running_file = NULL;
+
+		sema_init(&t->wait_sema, 0);
+		sema_init(&t->fork_sema, 0);
+		sema_init(&t->exit_sema, 0);
+
+		list_init(&t->childs);		
+	#endif
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

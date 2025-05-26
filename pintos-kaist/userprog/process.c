@@ -94,10 +94,18 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	
 	/* Clone current thread to new thread.*/
 	struct thread *child = thread_get_child(child_tid);
-	if (child) thread_join(child);
-	else return TID_ERROR;
+	// if (child) thread_join(child);
+	// else return TID_ERROR;
 
-	return child_tid;
+	if (child) {
+		sema_down(&child->fork_sema);	// fork 완료 대기
+		return child_tid;
+	}
+	else {
+		return TID_ERROR;
+	}
+
+	// return child_tid;
 }
 
 struct thread *thread_get_child(const tid_t child_tid)
@@ -218,10 +226,14 @@ __do_fork(void *aux)
         }
     }
 	// copying running_file
-	char *file_name = parent->name;
+	// char *file_name = parent->name;
 	// printf("trying open: %s\n", file_name);
-	current->running_file = file_duplicate(parent->running_file);
+	// current->running_file = file_duplicate(parent->running_file);
 
+	if (parent->running_file) {
+		current->running_file = file_duplicate(parent->running_file);
+	}
+	
 	// printf("open complete\n");
 	
 	process_init();
@@ -232,15 +244,17 @@ __do_fork(void *aux)
 
 	if (succ){
 		// sema_up(&fork_data->fork_sema);
-		lock_acquire(&current->lock);
-		current->done = 1;
-		cond_signal(&current->condition, &current->lock);
-		lock_release(&current->lock);
-		current->done = 0;
+		// lock_acquire(&current->lock);
+		// current->done = 1;
+		// cond_signal(&current->condition, &current->lock);
+		// lock_release(&current->lock);
+		// current->done = 0;
+		sema_up(&current->fork_sema);
 		do_iret(&if_);
 	}
 error:
 	// printf("error: directly going to exit\n");
+	sema_up(&current->fork_sema);
 	thread_exit();
 }
 
@@ -286,11 +300,12 @@ int process_exec(void *f_name)
  * does nothing. */
 int process_wait(tid_t child_tid)
 {
-	struct list_elem *e = list_begin(&thread_current()->childs);
+	// struct list_elem *e = list_begin(&thread_current()->childs);
 	struct thread *child = thread_get_child(child_tid); 
 
 	if (child) {
-		thread_join(child);
+		// thread_join(child);
+		sema_down(&child->wait_sema);		// 자식 종료 대기
 
 		list_remove(&child->child_elem);  // 대기가 완료된 리스트는 삭제해야 후환이 없습니다.
 
@@ -300,32 +315,50 @@ int process_wait(tid_t child_tid)
 	return -1;
 }
 
-void thread_join(struct thread *child)
-{
-	lock_acquire(&child->lock);
-	while (child->done == 0)
-	{
-		cond_wait(&child->condition, &child->lock);
-	}
-	lock_release(&child->lock);
-}
+// void thread_join(struct thread *child)
+// {
+// 	lock_acquire(&child->lock);
+// 	while (child->done == 0)
+// 	{
+// 		cond_wait(&child->condition, &child->lock);
+// 	}
+// 	lock_release(&child->lock);
+// }
 
 /* Exit the process. This function is called by thread_exit (). */
 void process_exit(void)
 {
 	struct thread *curr = thread_current();
 	
-	lock_acquire(&curr->lock);
+	// lock_acquire(&curr->lock);
 
-	curr->done = 1;
-	cond_signal(&curr->condition, &curr->lock);
+	// curr->done = 1;
+	// cond_signal(&curr->condition, &curr->lock);
 
-	lock_release(&curr->lock);
+	// lock_release(&curr->lock);
 
-	printf("%s: exit(%d)\n", curr->name, curr->status_code);
+	// printf("%s: exit(%d)\n", curr->name, curr->status_code);
 
-	file_allow_write(curr->running_file);
-	file_close(curr->running_file);
+	// file_allow_write(curr->running_file);
+	// file_close(curr->running_file);
+
+	// 파일 정리
+	if (curr->running_file) {
+		file_allow_write(curr->running_file);
+		file_close(curr->running_file);
+	}
+
+	// 파일 디스크립터 테이블
+	for (int fd = 0; fd < MAX_FD; fd++) {
+		if (curr->fd_table[fd] != NULL) {
+			file_close(curr->fd_table[fd]);
+			curr->fd_table[fd] = NULL;
+		}
+	}
+
+	// 부모에게 종료 신호
+	sema_up(&curr->wait_sema);
+
 	process_cleanup(); // 이게 file_close와 무관하게 잘 실행되는지 점검할 필요 있음.
 	
 }
@@ -590,7 +623,13 @@ load(const char *file_name, struct intr_frame *if_)
 
 	strlcpy(t->name, file_name, strlen(file_name) + 1);
 
-	t->next_fd = 2; // init fd ptr
+	//t->next_fd = 2; // init fd ptr
+	
+	// 파일 디스크립터 테이블 초기화
+	for (int i = 0; i < MAX_FD; i++) {
+		t->fd_table[i] = NULL;
+	}
+	t->next_fd = 2; // stdin(0), stdout(1) 이후부터 할당
 
 done:
 	/* We arrive here whether the load is successful or not. */
