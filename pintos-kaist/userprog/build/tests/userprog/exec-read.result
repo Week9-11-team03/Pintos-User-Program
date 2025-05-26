@@ -1,16 +1,32 @@
 FAIL
-Kernel panic in run: PANIC at ../../userprog/exception.c:97 in kill(): Kernel bug - unexpected interrupt in kernel
-Call stack: 0x8004218148 0x800421ce4a 0x800421cfc9 0x8004208fd6 0x80042093f4 0x800421ef40 0x800421be72 0x8004207283 0x800421d4fc 0x800421d179 0x800421d03e 0x400f1d
-Translation of call stack:
-0x0000008004218148: debug_panic (lib/kernel/debug.c:32)
-0x000000800421ce4a: kill (userprog/exception.c:103)
-0x000000800421cfc9: page_fault (userprog/exception.c:159 (discriminator 12))
-0x0000008004208fd6: intr_handler (threads/interrupt.c:352)
-0x00000080042093f4: intr_entry (threads/intr-stubs.o:?)
-0x000000800421ef40: file_close (filesys/file.c:56)
-0x000000800421be72: process_exit (userprog/process.c:355)
-0x0000008004207283: thread_exit (threads/thread.c:332)
-0x000000800421d4fc: open (userprog/syscall.c:139)
-0x000000800421d179: syscall_handler (userprog/syscall.c:65)
-0x000000800421d03e: no_sti (userprog/syscall-entry.o:?)
-0x0000000000400f1d: (unknown)
+Test output failed to match any acceptable form.
+
+Acceptable output:
+  (exec-read) begin
+  (exec-read) open "sample.txt"
+  (exec-read) read "sample.txt" first 20 bytes
+  (child-read) begin
+  (child-read) open "sample.txt"
+  (child-read) read "sample.txt" first 20 bytes
+  (child-read) read "sample.txt" remainders
+  (child-read) Child success
+  (child-read) end
+  child-read: exit(0)
+  (exec-read) Parent success
+  (exec-read) end
+  exec-read: exit(0)
+Differences in `diff -u' format:
+  (exec-read) begin
+  (exec-read) open "sample.txt"
+  (exec-read) read "sample.txt" first 20 bytes
+- (child-read) begin
+- (child-read) open "sample.txt"
+- (child-read) read "sample.txt" first 20 bytes
+- (child-read) read "sample.txt" remainders
+- (child-read) Child success
+- (child-read) end
+- child-read: exit(0)
++ child-read: exit(-1)
+  (exec-read) Parent success
+  (exec-read) end
+  exec-read: exit(0)

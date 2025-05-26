@@ -48,56 +48,6 @@ void syscall_init(void)
 	lock_init(&filesys_lock);
 }
 
-/* The main system call interface */
-void syscall_handler(struct intr_frame *f UNUSED)
-{
-	// TODO: Your implementation goes here.
-	// printf("rax: %ld, rdi: %ld, rsi: %ld, rdx: %ld, r10: %ld, r8: %ld, r9: %ld\n", f->R.rax, f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9);
-	switch (f->R.rax)
-	{
-	case SYS_HALT:
-		halt();
-		break;
-	case SYS_EXIT:
-		exit(f->R.rdi);
-		break;
-	case SYS_WRITE:
-		f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
-		break;
-	case SYS_OPEN:
-		f->R.rax = open(f->R.rdi);
-		break;
-	case SYS_CREATE:
-		f->R.rax = create(f->R.rdi, f->R.rsi);
-		break;
-	case SYS_READ:
-		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
-		break;
-	case SYS_FILESIZE:
-		f->R.rax = filesize(f->R.rdi);
-		break;
-	case SYS_CLOSE:
-		close(f->R.rdi);
-		break;
-	case SYS_SEEK:
-		file_seek(f->R.rdi, f->R.rsi);
-		break;
-	case SYS_TELL:
-		f->R.rax = file_tell(f->R.rdi);
-		break;
-	case SYS_REMOVE:
-		f->R.rax = remove(f->R.rdi);
-		break;
-	case SYS_FORK:
-		f->R.rax = fork_(f->R.rdi, f);
-		// printf("fork complete. returned tid: %d\n", f->R.rax);
-		break;
-	case SYS_WAIT:
-		f->R.rax = wait(f->R.rdi);
-		break;
-	}
-}
-
 int write(int fd, const void *buffer, unsigned size)
 {
 	int bytes_written;
@@ -147,6 +97,11 @@ int open(const char *file_name)
 
 	if (file == NULL) // 실패 시 -1 리턴.
 	{
+		return -1;
+	}
+
+	if (t->next_fd >= MAX_FD) {
+		file_close(file);
 		return -1;
 	}
 
@@ -269,13 +224,64 @@ void seek(int fd, unsigned position)
 	}
 }
 
-int fork_ (const char *thread_name, struct intr_frame *f) {
+tid_t fork_ (const char *thread_name, struct intr_frame *f) {
 	// printf("doing fork. %s\n", thread_name);
-	return (int) process_fork(thread_name, f);
+	return process_fork(thread_name, f);
 }
 
 int wait (int pid) {
 	// printf("waiting pid: %d\n", pid);
 	int status_code = process_wait(pid);
 	return status_code;
+}
+
+/* The main system call interface */
+void syscall_handler(struct intr_frame *f UNUSED)
+{
+	// TODO: Your implementation goes here.
+	// printf("rax: %ld, rdi: %ld, rsi: %ld, rdx: %ld, r10: %ld, r8: %ld, r9: %ld\n", f->R.rax, f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9);
+	switch (f->R.rax) {
+		case SYS_HALT:
+			halt();
+			break;
+		case SYS_EXIT:
+			exit(f->R.rdi);
+			break;
+		case SYS_WRITE:
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		case SYS_OPEN:
+			f->R.rax = open(f->R.rdi);
+			break;
+		case SYS_CREATE:
+			f->R.rax = create(f->R.rdi, f->R.rsi);
+			break;
+		case SYS_READ:
+			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		case SYS_FILESIZE:
+			f->R.rax = filesize(f->R.rdi);
+			break;
+		case SYS_CLOSE:
+			close(f->R.rdi);
+			break;
+		case SYS_SEEK:
+			seek(f->R.rdi, f->R.rsi);
+			break;
+		case SYS_TELL:
+			f->R.rax = tell(f->R.rdi);
+			break;
+		case SYS_REMOVE:
+			f->R.rax = remove(f->R.rdi);
+			break;
+		case SYS_FORK:
+			f->R.rax = fork_(f->R.rdi, f);
+			// printf("fork complete. returned tid: %d\n", f->R.rax);
+			break;
+		case SYS_WAIT:
+			f->R.rax = wait(f->R.rdi);
+			break;
+		default:
+			exit(-1);
+	}
 }

@@ -20,5 +20,5 @@ Differences in `diff -u' format:
 - (args) argv[1] = 'childarg'
 - (args) argv[2] = null
 - (args) end
-+ (exec-arg) end
-  exec-arg: exit(0)
+- exec-arg: exit(0)
++ exec-arg: exit(-1)

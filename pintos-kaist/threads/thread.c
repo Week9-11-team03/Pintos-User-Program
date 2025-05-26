@@ -206,12 +206,17 @@ tid_t thread_create(const char *name, int priority,
 		if (t->fd_table == NULL) {
 			return TID_ERROR;
 		}
+
+		for (int i = 0; i < MAX_FD; i++) {
+			t->fd_table[i] = NULL;
+		}
+
 		t->status_code = 0;
 
-		t->next_fd = 3;
-		t->fd_table[0] = 0;
-		t->fd_table[1] = 1;
-		t->fd_table[2] = 2;
+		t->next_fd = 2;
+		// t->fd_table[0] = 0;
+		// t->fd_table[1] = 1;
+		// t->fd_table[2] = 2;
 		
 		list_push_back(&thread_current()->childs, &t->child_elem);
 	#endif

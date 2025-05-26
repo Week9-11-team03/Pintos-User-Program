@@ -4,7 +4,7 @@ Kernel command line: -q -f put multi-oom run multi-oom
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  143,974,400 loops/s.
+Calibrating timer...  258,457,600 loops/s.
 hd0:0: detected 321 sector (160 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 107 sector (53 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -13,24 +13,33 @@ Boot complete.
 Putting 'multi-oom' into the file system...
 Executing 'multi-oom':
 (multi-oom) begin
-Page fault at 0x1: not present error reading page in kernel context.
-Interrupt 0x0e (#PF Page-Fault Exception) at rip=800421eebb
- cr2=0000000000000001 error=               0
-rax 0000000000000001 rbx 0000008004259008 rcx 0000000000000008 rdx 0000008004259000
-rsp 0000008004258e90 rbp 0000008004258eb0 rsi 00000080053df000 rdi 0000000000000001
-rip 000000800421eebb r8 0000000000000000  r9 0000000000000029 r10 0000008004239000
-r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+Page fault at 0: not present error writing page in user context.
+child_6_X: dying due to interrupt 0x0e (#PF Page-Fault Exception).
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=4001b0
+ cr2=0000000000000000 error=               6
+rax 0000000000000000 rbx 0000000000000000 rcx 691060bf082d7331 rdx 0000000000000000
+rsp 000000004747fed0 rbp 000000004747fee0 rsi 000000000060569a rdi 00000000006055a8
+rip 00000000004001b0 r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000212 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
 r15 0000000000000000 rflags 00000206
-es: 0010 ds: 0010 cs: 0008 ss: 0010
-Kernel PANIC at ../../userprog/exception.c:97 in kill(): Kernel bug - unexpected interrupt in kernel
-Call stack: 0x8004218148 0x800421ce4a 0x800421cfc9 0x8004208fd6 0x80042093f4 0x800421bbb9 0x80042075b6.
-The `backtrace' program can make call stacks useful.
-Read "Backtraces" in the "Debugging Tools" chapter
-of the Pintos documentation for more information.
-Timer: 87 ticks
-Thread: 46 idle ticks, 30 kernel ticks, 11 user ticks
+es: 001b ds: 001b cs: 0023 ss: 001b
+(multi-oom) crashed child should return -1.: FAILED
+child_5_O: exit(1)
+child_4_O: exit(1)
+child_3_O: exit(1)
+child_2_O: exit(1)
+child_1_O: exit(1)
+child_0_O: exit(1)
+(multi-oom) Spawned at least 10 children.
+(multi-oom) Spawned at least 10 children.: FAILED
+multi-oom: exit(1)
+Execution of 'multi-oom' complete.
+Timer: 93 ticks
+Thread: 49 idle ticks, 30 kernel ticks, 14 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 335 reads, 242 writes
+hd0:1: 965 reads, 242 writes
 hd1:0: 107 reads, 0 writes
-Console: 1713 characters output
-Key
+Console: 1725 characters output
+Keyboard: 0 keys pressed
+Exception: 1 page faults
+Powering off...

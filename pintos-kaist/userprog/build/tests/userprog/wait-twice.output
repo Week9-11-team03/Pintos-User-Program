@@ -14,26 +14,6 @@ Putting 'wait-twice' into the file system...
 Putting 'child-simple' into the file system...
 Executing 'wait-twice':
 (wait-twice) begin
-(wait-twice) end
-child-simple: exit(0)
-Page fault at 0xd: not present error reading page in kernel context.
-Interrupt 0x0e (#PF Page-Fault Exception) at rip=800421f16d
- cr2=000000000000000d error=               0
-rax 0000000000000001 rbx 0000000000000000 rcx 0000000000000000 rdx 0000000000000008
-rsp 0000008004242e90 rbp 0000008004242ea0 rsi 0000008004242028 rdi 0000000000000001
-rip 000000800421f16d r8 0000008004242e18  r9 000000800421b5c1 r10 0000000000000000
-r11 0000000000000206 r12 000000800421d115 r13 0000000000000000 r14 0000000000000000
-r15 0000000000000000 rflags 00000202
-es: 001b ds: 001b cs: 0008 ss: 0010
-Kernel PANIC at ../../userprog/exception.c:97 in kill(): Kernel bug - unexpected interrupt in kernel
-Call stack: 0x8004218148 0x800421ce4a 0x800421cfc9 0x8004208fd6 0x80042093f4 0x800421ef40 0x800421be72 0x8004207283 0x800421d4fc 0x800421d179 0x800421d03e 0x400c90.
-The `backtrace' program can make call stacks useful.
-Read "Backtraces" in the "Debugging Tools" chapter
-of the Pintos documentation for more information.
-Timer: 84 ticks
-Thread: 51 idle ticks, 29 kernel ticks, 4 user ticks
-hd0:0: 0 reads, 0 writes
-hd0:1: 107 reads, 446 writes
-hd1:0: 204 reads, 0 writes
-Console: 1882 characters output
-Key
+child-simple: exit(-1)
+(wait-twice) wait(exec()) = -1
+TIMEOUT

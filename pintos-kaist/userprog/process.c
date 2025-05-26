@@ -108,19 +108,18 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	// return child_tid;
 }
 
-struct thread *thread_get_child(const tid_t child_tid)
-{
-	struct list_elem *e = list_begin(&thread_current()->childs);
-	for (; e != list_end(&thread_current()->childs); e = list_next(e))
-	{
+struct thread *thread_get_child(const tid_t child_tid) {
+	struct thread *curr = thread_current();
+	struct list_elem *e;
+
+	// 리스트를 역순으로 순회
+	for (e = list_rbegin(&curr->childs); e != list_rend(&curr->childs); e = list_prev(e)) {
 		struct thread *child = list_entry(e, struct thread, child_elem);
-		if (child->tid == child_tid)
-		{
+		if (child->tid == child_tid) {
 			return child;
 		}
 	}
 	return NULL;
-
 }
 
 #ifndef VM
@@ -218,7 +217,7 @@ __do_fork(void *aux)
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
 	// printf("copying file descriptor table\n");
-	 for (int fd = 0; fd < MAX_FD; fd++) { // 이쪽은 fdt 리팩터링 후 다시 구현 필요. 현재는 문제 없어 보임.
+	 for (int fd = 2; fd < MAX_FD; fd++) { // 이쪽은 fdt 리팩터링 후 다시 구현 필요. 현재는 문제 없어 보임.
         if (parent->fd_table[fd] != NULL) {
             current->fd_table[fd] = file_duplicate(parent->fd_table[fd]);
             // if (current->fd_table[fd] == NULL) 
@@ -230,9 +229,11 @@ __do_fork(void *aux)
 	// printf("trying open: %s\n", file_name);
 	// current->running_file = file_duplicate(parent->running_file);
 
-	if (parent->running_file) {
-		current->running_file = file_duplicate(parent->running_file);
-	}
+	// if (parent->running_file) {
+	// 	current->running_file = file_duplicate(parent->running_file);
+	// }
+	current->running_file = NULL;
+
 	
 	// printf("open complete\n");
 	
@@ -307,9 +308,10 @@ int process_wait(tid_t child_tid)
 		// thread_join(child);
 		sema_down(&child->wait_sema);		// 자식 종료 대기
 
+		int exit_status = child->status_code;
 		list_remove(&child->child_elem);  // 대기가 완료된 리스트는 삭제해야 후환이 없습니다.
 
-		return child->status_code; // 종료 코드는 여기에서 리턴됩니다.
+		return exit_status; // 종료 코드는 여기에서 리턴됩니다.
 	}
 	// child를 찾을 수 없는 경우.
 	return -1;
@@ -344,16 +346,20 @@ void process_exit(void)
 
 	// 파일 정리
 	if (curr->running_file) {
-		file_allow_write(curr->running_file);
-		file_close(curr->running_file);
+		struct file *file = curr->running_file;
+		curr->running_file = NULL;
+		file_close(file);
 	}
 
-	// 파일 디스크립터 테이블
-	for (int fd = 0; fd < MAX_FD; fd++) {
-		if (curr->fd_table[fd] != NULL) {
-			file_close(curr->fd_table[fd]);
-			curr->fd_table[fd] = NULL;
+	// 파일 디스크립터 테이블 정리
+	if (curr->fd_table) {
+		for (int fd = 2; fd < MAX_FD; fd++) {
+			if (curr->fd_table[fd] != NULL) {
+				file_close(curr->fd_table[fd]);
+				curr->fd_table[fd] = NULL;
+			}
 		}
+		palloc_free_page(curr->fd_table);
 	}
 
 	// 부모에게 종료 신호

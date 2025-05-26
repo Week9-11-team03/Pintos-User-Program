@@ -11,5 +11,4 @@ Differences in `diff -u' format:
   (exec-once) I'm your father
 - (child-simple) run
 - exec-once: exit(81)
-+ (exec-once) end
-+ exec-once: exit(0)
++ exec-once: exit(-1)
