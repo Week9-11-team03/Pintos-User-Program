@@ -11,43 +11,53 @@ Formatting file system...done.
 Boot complete.
 Executing 'priority-condvar':
 (priority-condvar) begin
-(priority-condvar) Thread priority 23 starting.
-(priority-condvar) Thread priority 22 starting.
-(priority-condvar) Thread priority 21 starting.
-(priority-condvar) Thread priority 30 starting.
-(priority-condvar) Thread priority 29 starting.
-(priority-condvar) Thread priority 28 starting.
-(priority-condvar) Thread priority 27 starting.
-(priority-condvar) Thread priority 26 starting.
-(priority-condvar) Thread priority 25 starting.
-(priority-condvar) Thread priority 24 starting.
+(priority-condvar) Thread priority starting.
+(priority-condvar) Thread priority starting.
+(priority-condvar) Thread priority starting.
+(priority-condvar) Thread priority starting.
+(priority-condvar) Thread priority starting.
+(priority-condvar) Thread priority starting.
+(priority-condvar) Thread priority starting.
+(priority-condvar) Thread priority starting.
+(priority-condvar) Thread priority starting.
+(priority-condvar) Thread priority starting.
 (priority-condvar) Signaling...
-(priority-condvar) Thread priority 30 woke up.
+(priority-condvar) Thread priority woke up.
+priority: exit(0)
 (priority-condvar) Signaling...
-(priority-condvar) Thread priority 29 woke up.
+(priority-condvar) Thread priority woke up.
+priority: exit(0)
 (priority-condvar) Signaling...
-(priority-condvar) Thread priority 28 woke up.
+(priority-condvar) Thread priority woke up.
+priority: exit(0)
 (priority-condvar) Signaling...
-(priority-condvar) Thread priority 27 woke up.
+(priority-condvar) Thread priority woke up.
+priority: exit(0)
 (priority-condvar) Signaling...
-(priority-condvar) Thread priority 26 woke up.
+(priority-condvar) Thread priority woke up.
+priority: exit(0)
 (priority-condvar) Signaling...
-(priority-condvar) Thread priority 25 woke up.
+(priority-condvar) Thread priority woke up.
+priority: exit(0)
 (priority-condvar) Signaling...
-(priority-condvar) Thread priority 24 woke up.
+(priority-condvar) Thread priority woke up.
+priority: exit(0)
 (priority-condvar) Signaling...
-(priority-condvar) Thread priority 23 woke up.
+(priority-condvar) Thread priority woke up.
+priority: exit(0)
 (priority-condvar) Signaling...
-(priority-condvar) Thread priority 22 woke up.
+(priority-condvar) Thread priority woke up.
+priority: exit(0)
 (priority-condvar) Signaling...
-(priority-condvar) Thread priority 21 woke up.
+(priority-condvar) Thread priority woke up.
+priority: exit(0)
 (priority-condvar) end
 Execution of 'priority-condvar' complete.
-Timer: 57 ticks
-Thread: 31 idle ticks, 26 kernel ticks, 0 user ticks
+Timer: 58 ticks
+Thread: 31 idle ticks, 27 kernel ticks, 0 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 9 reads, 18 writes
-Console: 1973 characters output
+Console: 2093 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

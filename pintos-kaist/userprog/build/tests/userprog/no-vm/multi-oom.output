@@ -4,7 +4,7 @@ Kernel command line: -q -f put multi-oom run multi-oom
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  137,420,800 loops/s.
+Calibrating timer...  157,081,600 loops/s.
 hd0:0: detected 321 sector (160 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 107 sector (53 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -13,16 +13,24 @@ Boot complete.
 Putting 'multi-oom' into the file system...
 Executing 'multi-oom':
 (multi-oom) begin
-(multi-oom) Spawned at least 10 children.
-(multi-oom) Spawned at least 10 children.: FAILED
-multi-oom: exit(1)
-Execution of 'multi-oom' complete.
-Timer: 267 ticks
-Thread: 236 idle ticks, 29 kernel ticks, 2 user ticks
+Page fault at 0x8025421408: not present error writing page in kernel context.
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800421d4cb
+ cr2=0000008025421408 error=               2
+rax 000000800423f000 rbx 0000000000000000 rcx 000000000423c481 rdx 000000800423c468
+rsp 000000800423fee0 rbp 000000800423ff10 rsi 000000800423f028 rdi 0000000000000001
+rip 000000800421d4cb r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000216 r12 000000800421d06f r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000202
+es: 001b ds: 001b cs: 0008 ss: 0010
+Kernel PANIC at ../../userprog/exception.c:97 in kill(): Kernel bug - unexpected interrupt in kernel
+Call stack: 0x80042180da 0x800421cda4 0x800421cf23 0x8004208f68 0x8004209386 0x800421d12e 0x800421cf98 0x40011c 0x4003a7 0x40044b 0x400fb0.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 68 ticks
+Thread: 37 idle ticks, 26 kernel ticks, 5 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 83 reads, 242 writes
+hd0:1: 215 reads, 242 writes
 hd1:0: 107 reads, 0 writes
-Console: 918 characters output
-Keyboard: 0 keys pressed
-Exception: 0 page faults
-Powering off...
+Console: 1757 characters output
+Key

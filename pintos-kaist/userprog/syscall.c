@@ -1,4 +1,4 @@
-#include "userprog/syscall.h"
+// #include "userprog/syscall.h" <- 유저 프로그램 쪽 syscall.h를 잘못 불러와서 헤더 불일치를 야기함.
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
@@ -14,13 +14,13 @@
 #include "filesys/filesys.h"
 #include "threads/synch.h"
 #include "filesys/file.h"
+#include "threads/palloc.h"
+#include "lib/string.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
 
 static struct lock filesys_lock;
-
-int get_user(uint8_t *dst, const uint8_t *uaddr);
 
 /* System call.
  *
@@ -50,57 +50,61 @@ void syscall_init(void)
 	lock_init(&filesys_lock);
 }
 
-
-void syscall_handler(struct intr_frame *f) {
-    // syscall 번호 및 인자 추출
-    int syscall_n = f->R.rax;
-    uint64_t arg1 = f->R.rdi;
-    uint64_t arg2 = f->R.rsi;
-    uint64_t arg3 = f->R.rdx;
-    uint64_t arg4 = f->R.r10;
-    uint64_t arg5 = f->R.r8;
-    uint64_t arg6 = f->R.r9;  
-
-    switch (syscall_n) {
-        case SYS_HALT:
-            halt();
-            break;
-        case SYS_EXIT:
-            exit((int)arg1);
-            break;
-        case SYS_WRITE:
-            f->R.rax = write((int)arg1, (const void *)arg2, (unsigned)arg3);
-            break;
-        case SYS_OPEN:
-            f->R.rax = open((const char *)arg1);
-            break;
-        case SYS_CREATE:
-            f->R.rax = create((const char *)arg1, (unsigned)arg2);
-            break;
-        case SYS_READ:
-            f->R.rax = read((int)arg1, (void *)arg2, (unsigned)arg3);
-            break;
-        case SYS_FILESIZE:
-            f->R.rax = filesize((int)arg1);
-            break;
-        case SYS_CLOSE:
-            close((int)arg1);
-            break;
-		// case SYS_FORK:
-		//     fork();
-		// 	break;
-		case SYS_EXEC:
-		    f->R.rax = exec((const char *)arg1);
-			break;
-    }
+/* The main system call interface */
+void syscall_handler(struct intr_frame *f UNUSED)
+{
+	// TODO: Your implementation goes here.
+	// printf("rax: %ld, rdi: %ld, rsi: %ld, rdx: %ld, r10: %ld, r8: %ld, r9: %ld\n", f->R.rax, f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8, f->R.r9);
+	switch (f->R.rax)
+	{
+	case SYS_HALT:
+		halt();
+		break;
+	case SYS_EXIT:
+		exit(f->R.rdi);
+		break;
+	case SYS_WRITE:
+		f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
+		break;
+	case SYS_OPEN:
+		f->R.rax = open(f->R.rdi);
+		break;
+	case SYS_CREATE:
+		f->R.rax = create(f->R.rdi, f->R.rsi);
+		break;
+	case SYS_READ:
+		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+		break;
+	case SYS_FILESIZE:
+		f->R.rax = filesize(f->R.rdi);
+		break;
+	case SYS_CLOSE:
+		close(f->R.rdi);
+		break;
+	case SYS_SEEK:
+		file_seek(f->R.rdi, f->R.rsi);
+		break;
+	case SYS_TELL:
+		f->R.rax = file_tell(f->R.rdi);
+		break;
+	case SYS_REMOVE:
+		f->R.rax = remove(f->R.rdi);
+		break;
+	case SYS_FORK:
+		f->R.rax = fork(f->R.rdi, f);
+		// printf("fork complete. returned tid: %d\n", f->R.rax);
+		break;
+	case SYS_WAIT:
+		f->R.rax = wait(f->R.rdi);
+		break;
+	case SYS_EXEC:
+		exec(f->R.rdi); 
+		break;
+	}
 }
-
-
-
 
 int write(int fd, const void *buffer, unsigned size)
 {
-	
 	int bytes_written;
 	struct thread *t = thread_current(); // 현재 쓰레드 포인터 획득
 	check_user_ptr(buffer);				 // 버퍼 유효성 검사.
@@ -158,10 +162,22 @@ int open(const char *file_name)
 	return fd;
 }
 
-int create(const char *file_name, unsigned initial_size)
+int create(const char *file, unsigned initial_size)
 {
-	check_user_ptr(file_name);
-	return filesys_create(file_name, initial_size);
+	check_user_ptr(file);
+	lock_acquire(&filesys_lock);				 // 전역 락 획득
+	int result = filesys_create(file, initial_size);
+	lock_release(&filesys_lock);				 // 전역 락 해제
+	return result;
+}
+
+int remove(const char *file)
+{
+	check_user_ptr(file);
+	lock_acquire(&filesys_lock);				 // 전역 락 획득
+	int result = filesys_remove(file);
+	lock_release(&filesys_lock);				 // 전역 락 해제
+	return result;
 }
 
 // returns number of bytes actually read
@@ -193,7 +209,13 @@ int read(int fd, void *buffer, unsigned size)
 	}
 }
 
-
+void check_user_ptr(const char *buffer)
+{
+	if (buffer == NULL || !is_user_vaddr(buffer) || pml4_get_page(thread_current()->pml4, buffer) == NULL)
+	{
+		exit(-1);
+	}
+}
 
 int filesize(int fd)
 {
@@ -225,82 +247,51 @@ void close(int fd)
 	}
 }
 
-
-void check_user_ptr(const char *buffer)
+unsigned tell(int fd)
 {
-	struct thread *cur = thread_current();
-	if (buffer == NULL || !is_user_vaddr(buffer) || pml4_get_page(thread_current()->pml4, buffer) == NULL)
+	struct thread *t = thread_current();
+	if (fd >= 2 && fd < MAX_FD && t->fd_table[fd] != NULL)
 	{
+		struct file *file = t->fd_table[fd];
+		lock_acquire(&filesys_lock);
+		unsigned off = file_tell(file);
+		lock_release(&filesys_lock);
+		return off;
+	}
+	return NULL;
+}
+
+void seek(int fd, unsigned position)
+{
+	struct thread *t = thread_current();
+	if (fd >= 2 && fd < MAX_FD && t->fd_table[fd] != NULL)
+	{
+		struct file *file = t->fd_table[fd];
+		lock_acquire(&filesys_lock);
+		file_seek(file, position);
+		lock_release(&filesys_lock);
+	}
+}
+
+int fork (const char *thread_name, struct intr_frame *f) {
+	return process_fork(thread_name, f);
+}
+
+int wait (int pid) {
+	int status_code = process_wait(pid);
+	return status_code;
+}
+
+void exec (const char *cmd_line)
+{
+	check_user_ptr(cmd_line);
+	// cmd_line을 새로운 영역에 할당(왜 해줘야 하는지 모르겠음) 프로세스가 데이터가 덮어 씌워져서 그렇다고는 하는데
+	void *copy = palloc_get_page(PAL_ZERO);
+	if (copy == NULL) return -1;
+	memcpy(copy, cmd_line, strlen(cmd_line)+1);
+	if (process_exec(copy) == -1) {
+		// printf("process exec failed\n");
 		exit(-1);
 	}
 }
 
-void check_string_ptr(const char *str) {
-	while (true) {
-		if (str == NULL || !is_user_vaddr(str) || pml4_get_page(thread_current()->pml4, str) == NULL)
-			exit(-1);
-		if (*str == '\0') break;
-		str++;
-	}
-}
-
-
-// /*
-// 현재 프로세스가 새로운 실행 파일로 완전히 바뀌도록 하는 함수
-// 즉, 현재의 코드, 메모리, 스택, 명령어 포인터 등을 모두 덮어씌워서 다른 프로그램이 되게 만드는 함수
-// */
-int exec(const char *file_name){
-	struct thread *t = thread_current(); // 현재 쓰레드 포인터를 획득
-	check_string_ptr(file_name);			 // 포인터 유효성 검사
-
-	char *fn_copy = palloc_get_page(0);
-	if (fn_copy == NULL) return -1;
-	strlcpy(fn_copy, file_name, PGSIZE);
-
-	int result = process_exec((void *)fn_copy);  // 전체 인자 넘겨야 함
-
-	// 여기서 free하지 마! process_exec → load에서 처리함
-	return result;
-}
-
-// int get_user(uint8_t *dst, const uint8_t *uaddr) {
-// 	if (!is_user_vaddr(uaddr) || pml4_get_page(thread_current()->pml4, uaddr) == NULL)
-// 		return -1;
-
-// 	*dst = *uaddr;
-// 	return 0;
-// }
-
-
-// char *copy_in_string(const char *usr_str) {
-// 	char *kernel_buf = palloc_get_page(0);
-// 	if (kernel_buf == NULL)
-// 		thread_exit();
-
-// 	size_t i = 0;
-// 	uint8_t byte;
-// 	while (i < PGSIZE) {
-// 		if (get_user(&byte, usr_str + i) == -1) {
-// 			palloc_free_page(kernel_buf);
-// 			thread_exit();
-// 		}
-// 		kernel_buf[i] = byte;
-// 		if (byte == '\0')
-// 			return kernel_buf;
-// 		i++;
-// 	}
-
-// 	kernel_buf[PGSIZE - 1] = '\0';
-// 	return kernel_buf;
-// }
-
-
-// int exec(const char *file_name){
-// 	char *fn_copy = copy_in_string(file_name);
-// 	if (fn_copy == NULL)
-// 		return -1;
-
-// 	int result = process_exec(fn_copy);
-// 	// process_exec 안에서 fn_copy는 해제됨
-// 	return result;
-// }

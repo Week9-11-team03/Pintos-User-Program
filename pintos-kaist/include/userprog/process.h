@@ -14,9 +14,8 @@ int child_done;
 static struct lock lock;
 static struct condition condition;
 
-static int status_table[32];
-static char *name_table[32];
-void thread_join(struct condition *, struct lock *);
+void thread_join(struct thread *);
 void init_kernel_monitor(void);
+// int process_exec_pass1(const char *cmd_line);
 
 #endif /* userprog/process.h */

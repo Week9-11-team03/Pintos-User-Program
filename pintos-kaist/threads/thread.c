@@ -219,6 +219,9 @@ tid_t thread_create(const char *name, int priority,
 	dprintf("[%p] thread unblocked \n", t);
 
 	struct thread *curr = thread_current();
+	t->parent_process = curr;
+	
+	list_push_back(&curr->childs, &t->child_elem);
 	if (threading_started && !intr_context() && t->priority > curr->priority)
 	{
 		thread_yield();
@@ -453,14 +456,31 @@ init_thread(struct thread *t, const char *name, int priority)
 
 	memset(t, 0, sizeof *t);
 	t->status = THREAD_BLOCKED;
-	strlcpy(t->name, name, sizeof t->name);
+	// strlcpy(t->name, name, sizeof t->name); // 여기서만 제대로 해주면 되겠네 그럼. 그런데 기존 문자열을 바꾸지 않고 해결하는 방법 없나? 지금은 문자열에 공백이 포함돼서 들어가버린다.
+	char temp_name[16];
+    strlcpy(temp_name, name, sizeof temp_name);
+    
+    char *save_ptr;
+    char *prog_name = strtok_r(temp_name, " \t", &save_ptr);
+    
+    if (prog_name != NULL) {
+        strlcpy(t->name, prog_name, sizeof t->name);
+    } else {
+        strlcpy(t->name, "unknown", sizeof t->name);
+    }
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
 	t->origin_priority = t->priority;
 	list_init(&t->donations);
+	list_init(&t->childs);
 	t->wait_on_lock = NULL;
-
+	t->done = 0;
+	// t->exec_success = 0;
+	cond_init(&t->condition);
+	lock_init(&t->lock);
+	sema_init(&t->fork_sema, 0);
+	sema_init(&t->exec_sema, 0);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -609,7 +629,7 @@ schedule(void)
 	thread_ticks = 0;
 
 #ifdef USERPROG
-	/* Activate the new address space. */ 
+	/* Activate the new address space. */
 	process_activate(next);
 #endif
 
@@ -638,22 +658,16 @@ schedule(void)
 static tid_t
 allocate_tid(void)
 {
-	static tid_t next_tid = 1;
-	tid_t tid;
+    static tid_t next_tid = 1;
+    tid_t tid;
 
-	if (threading_started)
-	{
-		lock_acquire(&tid_lock);
-		tid = next_tid++;
-		lock_release(&tid_lock);
-	}
-	else
-	{
-		tid = next_tid++;
-	}
+    lock_acquire(&tid_lock);
+    tid = next_tid++;
+    lock_release(&tid_lock);
 
-	return tid;
+    return tid;
 }
+
 
 // The function that sets thread state to blocked and wait after insert it to sleep queue
 void thread_sleep(int64_t local_tick)

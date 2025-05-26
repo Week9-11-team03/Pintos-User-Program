@@ -1,2 +1,16 @@
 FAIL
-run: wait for child 1 of 10 returned 4 (expected 0): FAILED
+Kernel panic in run: PANIC at ../../userprog/exception.c:97 in kill(): Kernel bug - unexpected interrupt in kernel
+Call stack: 0x80042180da 0x800421cda4 0x8004208f68 0x8004209386 0x800421bcc4 0x800421da16 0x800421d2c0 0x800421cf98 0x4007b9 0x4002be 0x400fa7 0x400ff0
+Translation of call stack:
+0x00000080042180da: debug_panic (lib/kernel/debug.c:32)
+0x000000800421cda4: kill (userprog/exception.c:103)
+0x0000008004208f68: intr_handler (threads/interrupt.c:352)
+0x0000008004209386: intr_entry (threads/intr-stubs.o:?)
+0x000000800421bcc4: process_wait (userprog/process.c:315)
+0x000000800421da16: wait (userprog/syscall.c:281)
+0x000000800421d2c0: syscall_handler (userprog/syscall.c:98)
+0x000000800421cf98: no_sti (userprog/syscall-entry.o:?)
+0x00000000004007b9: (unknown)
+0x00000000004002be: (unknown)
+0x0000000000400fa7: (unknown)
+0x0000000000400ff0: (unknown)

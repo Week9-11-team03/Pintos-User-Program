@@ -1,14 +1,1 @@
-FAIL
-Kernel panic in run: PANIC at ../../threads/palloc.c:314 in palloc_free_multiple(): executed an unreachable statement
-Call stack: 0x8004217fcd 0x800420b89a 0x800420b990 0x800421d5fa 0x800421d666 0x800421cfee 0x800421cd4f 0x4000fd 0x40015b 0x400bfc
-Translation of call stack:
-0x0000008004217fcd: debug_panic (lib/kernel/debug.c:32)
-0x000000800420b89a: palloc_free_multiple (threads/palloc.c:316)
-0x000000800420b990: palloc_free_page (threads/palloc.c:329)
-0x000000800421d5fa: copy_in_string (userprog/syscall.c:284)
-0x000000800421d666: exec (userprog/syscall.c:298)
-0x000000800421cfee: syscall_handler (userprog/syscall.c:93)
-0x000000800421cd4f: no_sti (userprog/syscall-entry.o:?)
-0x00000000004000fd: (unknown)
-0x000000000040015b: (unknown)
-0x0000000000400bfc: (unknown)
+PASS

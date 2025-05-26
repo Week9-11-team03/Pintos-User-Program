@@ -16,17 +16,24 @@ Executing 'rox-child':
 (rox-child) begin
 (rox-child) open "child-rox"
 (rox-child) read "child-rox"
-(rox-child) write "child-rox"
-(rox-child) exec "child-rox 1"
-(rox-child) wait for child: FAILED
-rox-child: exit(1)
-Execution of 'rox-child' complete.
-Timer: 267 ticks
-Thread: 238 idle ticks, 27 kernel ticks, 2 user ticks
+Page fault at 0xa: not present error writing page in kernel context.
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800421f1dc
+ cr2=000000000000000a error=               2
+rax 0000000000000002 rbx 0000000000000000 rcx 0000000000403a9d rdx 0000000000000000
+rsp 0000008004240f00 rbp 0000008004240f10 rsi 0000000000000000 rdi 0000000000000002
+rip 000000800421f1dc r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000216 r12 000000800421d06f r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000246
+es: 001b ds: 001b cs: 0008 ss: 0010
+Kernel PANIC at ../../userprog/exception.c:97 in kill(): Kernel bug - unexpected interrupt in kernel
+Call stack: 0x80042180da 0x800421cda4 0x800421cf23 0x8004208f68 0x8004209386 0x800421d224 0x800421cf98 0x4001c1 0x4003c5 0x400e66.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 71 ticks
+Thread: 41 idle ticks, 26 kernel ticks, 4 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 114 reads, 479 writes
+hd0:1: 113 reads, 478 writes
 hd1:0: 220 reads, 0 writes
-Console: 1040 characters output
-Keyboard: 0 keys pressed
-Exception: 0 page faults
-Powering off...
+Console: 1856 characters output
+Key

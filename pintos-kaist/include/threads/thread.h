@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 #include "threads/interrupt.h"
 #ifdef VM
 #include "vm/vm.h"
@@ -27,7 +28,6 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-#define FD_LIMIT 64
 
 /* A kernel thread or user process.
  *
@@ -86,7 +86,7 @@ typedef int tid_t;
  * only because they are mutually exclusive: only a thread in the
  * ready state is on the run queue, whereas only a thread in the
  * blocked state is on a semaphore wait list. */
-#define MAX_FD 10
+#define MAX_FD 64
 struct thread {
 	/* Owned by thread.c. */
 	tid_t tid;                          /* Thread identifier. */
@@ -94,7 +94,6 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 	int origin_priority;                       /* Priority. */
-	//int exit_status;
 	int64_t local_tick;
 
 	/* Shared between thread.c and synch.c. */
@@ -103,7 +102,6 @@ struct thread {
 	struct list donations;
 	struct lock *wait_on_lock; 
 
-	
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -119,9 +117,19 @@ struct thread {
 	unsigned magic;                     /* Detects stack overflow. */
 	int status_code;
 	struct file *fd_table[MAX_FD];
-	//struct file *fdt[FD_LIMIT];
 	int next_fd;
-	int fd_cnt;
+	struct file *running_file;
+	struct thread *parent_process; 
+	struct list childs;
+	struct list_elem child_elem;
+
+	struct condition condition;
+	struct lock lock;
+	int done;
+	
+	struct semaphore fork_sema;
+	struct semaphore exec_sema;
+	int is_exec_loaded;
 };
 
 /* If false (default), use round-robin scheduler.
@@ -166,5 +174,8 @@ void set_global_tick();
 int64_t get_min_tick();
 bool tick_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED); 
 bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
+struct thread *thread_get_child(const tid_t child_tid);
+
 
 #endif /* threads/thread.h */
