@@ -197,7 +197,7 @@ int process_exec(void *f_name)
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 
 	/* If load failed, quit. */
-	palloc_free_page(file_name);
+	//palloc_free_page(file_name);
 	if (!success)
 		return -1;
 	/* Start switched process. */
@@ -537,14 +537,15 @@ load(const char *file_name, struct intr_frame *if_)
 	//strlcpy(thread_current()->name, argv[0], sizeof thread_current()->name);
 	strlcpy(t->name, file_name, strlen(file_name)+1);
 
-	t->fd_cnt = 2; 
-	
+	t->next_fd = 2; 
+
 	success = true;
 
 
 done:
 	/* We arrive here whether the load is successful or not. */
 	file_close(file);
+	palloc_free_page(file_name);
 	return success;
 }
 
