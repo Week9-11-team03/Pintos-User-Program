@@ -14,6 +14,8 @@
 #include "filesys/filesys.h"
 #include "threads/synch.h"
 #include "filesys/file.h"
+#include "threads/palloc.h"
+#include "lib/string.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -235,6 +237,24 @@ int wait (int pid) {
 	return status_code;
 }
 
+int exec (const char *cmd_line) {
+
+	check_user_ptr(cmd_line);
+
+	char *cmd_copy = palloc_get_page(PAL_ZERO);
+	if (cmd_copy == NULL) {
+		return -1;
+	}
+	
+	strlcpy(cmd_copy, cmd_line, PGSIZE);
+
+	if (process_exec(cmd_copy) == -1) {
+		exit(-1);
+	}
+
+	NOT_REACHED();
+}
+
 /* The main system call interface */
 void syscall_handler(struct intr_frame *f UNUSED)
 {
@@ -280,6 +300,9 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			break;
 		case SYS_WAIT:
 			f->R.rax = wait(f->R.rdi);
+			break;
+		case SYS_EXEC:
+			exec(f->R.rdi);
 			break;
 		default:
 			exit(-1);

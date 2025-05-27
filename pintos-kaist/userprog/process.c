@@ -58,10 +58,16 @@ tid_t process_create_initd(const char *file_name)
 	strlcpy(fn_copy, file_name, PGSIZE);
 
 	/* Create a new thread to execute FILE_NAME. */
-
-	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
+	char temp_name[16];
+	strlcpy(temp_name, file_name, sizeof(temp_name));
+	
+	char *save_ptr;
+	char *prog_name = strtok_r(temp_name, " \t", &save_ptr);
+	
+	tid = thread_create(prog_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page(fn_copy);
+
 	return tid;
 }
 
@@ -232,8 +238,10 @@ __do_fork(void *aux)
 	// if (parent->running_file) {
 	// 	current->running_file = file_duplicate(parent->running_file);
 	// }
-	current->running_file = NULL;
 
+	current->next_fd = parent->next_fd;
+
+	current->running_file = NULL;
 	
 	// printf("open complete\n");
 	
@@ -285,6 +293,7 @@ int process_exec(void *f_name)
 	palloc_free_page(file_name);
 	if (!success)
 		return -1;
+
 	/* Start switched process. */
 	do_iret(&_if);
 	NOT_REACHED();
@@ -299,22 +308,37 @@ int process_exec(void *f_name)
  *
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
-int process_wait(tid_t child_tid)
-{
-	// struct list_elem *e = list_begin(&thread_current()->childs);
-	struct thread *child = thread_get_child(child_tid); 
+// int process_wait(tid_t child_tid)
+// {
+// 	// struct list_elem *e = list_begin(&thread_current()->childs);
+// 	struct thread *child = thread_get_child(child_tid); 
 
-	if (child) {
-		// thread_join(child);
-		sema_down(&child->wait_sema);		// 자식 종료 대기
+// 	if (child) {
+// 		// thread_join(child);
+// 		sema_down(&child->wait_sema);		// 자식 종료 대기
 
-		int exit_status = child->status_code;
-		list_remove(&child->child_elem);  // 대기가 완료된 리스트는 삭제해야 후환이 없습니다.
+// 		int exit_status = child->status_code;
+// 		list_remove(&child->child_elem);  // 대기가 완료된 리스트는 삭제해야 후환이 없습니다.
 
-		return exit_status; // 종료 코드는 여기에서 리턴됩니다.
+// 		return exit_status; // 종료 코드는 여기에서 리턴됩니다.
+// 	}
+// 	// child를 찾을 수 없는 경우.
+// 	return -1;
+// }
+
+int process_wait(tid_t child_tid) {
+	struct thread *child = thread_get_child(child_tid);
+
+	if (child == NULL) {
+		return -1;
 	}
-	// child를 찾을 수 없는 경우.
-	return -1;
+
+	list_remove(&child->child_elem);
+	sema_down(&child->wait_sema);
+	int exit_status = child->status_code;	
+	sema_up(&child->exit_sema);
+
+	return exit_status;
 }
 
 // void thread_join(struct thread *child)
@@ -360,13 +384,13 @@ void process_exit(void)
 			}
 		}
 		palloc_free_page(curr->fd_table);
+		curr->fd_table = NULL;
 	}
-
-	// 부모에게 종료 신호
-	sema_up(&curr->wait_sema);
-
-	process_cleanup(); // 이게 file_close와 무관하게 잘 실행되는지 점검할 필요 있음.
 	
+	process_cleanup(); 
+
+	sema_up(&curr->wait_sema);			// 부모에게 "자식 종료 완료" 신호 전송
+	sema_down(&curr->exit_sema); 		// 부모로부터 "정리 완료" 신호 대기
 }
 
 /* Free the current process's resources. */
@@ -506,15 +530,15 @@ load(const char *file_name, struct intr_frame *if_)
 	process_activate(thread_current());
 
 	/* Open executable file. */
-
-	t->running_file = file = filesys_open(file_name);
-	file_deny_write(t->running_file);
-
+	file = filesys_open(file_name);
 	if (file == NULL)
 	{
 		printf("load: %s: open failed\n", file_name);
 		goto done;
 	}
+
+	t->running_file = file;
+	file_deny_write(t->running_file);
 
 	/* Read and verify executable header. */
 	if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\2\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 0x3E // amd64
@@ -627,15 +651,15 @@ load(const char *file_name, struct intr_frame *if_)
 
 	success = true;
 
-	strlcpy(t->name, file_name, strlen(file_name) + 1);
+	//strlcpy(t->name, file_name, strlen(file_name) + 1);
 
 	//t->next_fd = 2; // init fd ptr
 	
 	// 파일 디스크립터 테이블 초기화
-	for (int i = 0; i < MAX_FD; i++) {
-		t->fd_table[i] = NULL;
-	}
-	t->next_fd = 2; // stdin(0), stdout(1) 이후부터 할당
+	// for (int i = 0; i < MAX_FD; i++) {
+	// 	t->fd_table[i] = NULL;
+	// }
+	// t->next_fd = 2; // stdin(0), stdout(1) 이후부터 할당
 
 done:
 	/* We arrive here whether the load is successful or not. */

@@ -241,7 +241,6 @@ tid_t thread_create(const char *name, int priority,
 	struct thread *curr = thread_current();
 	t->parent_process = curr;
 	
-	list_push_back(&curr->childs, &t->child_elem);
 	if (threading_started && !intr_context() && t->priority > curr->priority)
 	{
 		thread_yield();
@@ -488,16 +487,14 @@ init_thread(struct thread *t, const char *name, int priority)
 	// cond_init(&t->condition);
 	// lock_init(&t->lock);
 	
-	#ifdef USERPROG
-		t->status_code = 0;
-		t->running_file = NULL;
+	t->status_code = 0;
+	t->running_file = NULL;
 
-		sema_init(&t->wait_sema, 0);
-		sema_init(&t->fork_sema, 0);
-		sema_init(&t->exit_sema, 0);
+	sema_init(&t->wait_sema, 0);
+	sema_init(&t->fork_sema, 0);
+	sema_init(&t->exit_sema, 0);
 
-		list_init(&t->childs);		
-	#endif
+	list_init(&t->childs);		
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
