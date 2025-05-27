@@ -100,11 +100,14 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	
 	/* Clone current thread to new thread.*/
 	struct thread *child = thread_get_child(child_tid);
-	// if (child) thread_join(child);
-	// else return TID_ERROR;
 
 	if (child) {
 		sema_down(&child->fork_sema);	// fork 완료 대기
+
+        if (child->status_code == -1) {
+            return TID_ERROR;
+        }
+        
 		return child_tid;
 	}
 	else {
@@ -192,13 +195,17 @@ __do_fork(void *aux)
 	struct thread *current = thread_current();
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
 	struct intr_frame *parent_if = fork_data->if_;
-	bool succ = true;
+	// bool succ = true;
 
 
 	// printf("current thread id: %d\n", current->tid);
 
 	/* 1. Read the cpu context to local stack. */
 	memcpy(&if_, parent_if, sizeof(struct intr_frame));
+
+	/* Finally, switch to the newly created process. */
+	// printf("switching to child. unblocking\n");
+	if_.R.rax = 0;
 
 	/* 2. Duplicate PT */
 	current->pml4 = pml4_create();
@@ -213,8 +220,11 @@ __do_fork(void *aux)
 		goto error;
 #else
 	// printf("copying page table\n");
-	if (!pml4_for_each(parent->pml4, duplicate_pte, parent))
+	if (!pml4_for_each(parent->pml4, duplicate_pte, parent)){
+        // printf("fork failed: page duplication error\n");
+        current->status_code = -1;  // ✅ 실패 상태 설정
 		goto error;
+	}
 #endif
 	// printf("fuck you haha \n");
 	/* TODO: Your code goes here.
@@ -226,8 +236,10 @@ __do_fork(void *aux)
 	 for (int fd = 2; fd < MAX_FD; fd++) { // 이쪽은 fdt 리팩터링 후 다시 구현 필요. 현재는 문제 없어 보임.
         if (parent->fd_table[fd] != NULL) {
             current->fd_table[fd] = file_duplicate(parent->fd_table[fd]);
-            // if (current->fd_table[fd] == NULL) 
-                // goto error;
+            if (current->fd_table[fd] == NULL) {
+                current->status_code = -1;
+				goto error;
+			}
         }
     }
 	// copying running_file
@@ -245,26 +257,22 @@ __do_fork(void *aux)
 	
 	// printf("open complete\n");
 	
+		sema_up(&current->fork_sema);
 	process_init();
 
-	/* Finally, switch to the newly created process. */
-	// printf("switching to child. unblocking\n");
-	if_.R.rax = 0;
-
-	if (succ){
+	// if (succ){
 		// sema_up(&fork_data->fork_sema);
 		// lock_acquire(&current->lock);
 		// current->done = 1;
 		// cond_signal(&current->condition, &current->lock);
 		// lock_release(&current->lock);
 		// current->done = 0;
-		sema_up(&current->fork_sema);
 		do_iret(&if_);
-	}
+	// }
 error:
-	// printf("error: directly going to exit\n");
+	//current->status_code = -1;
 	sema_up(&current->fork_sema);
-	thread_exit();
+	exit(-2);
 }
 
 /* Switch the current execution context to the f_name.
@@ -383,6 +391,7 @@ void process_exit(void)
 				curr->fd_table[fd] = NULL;
 			}
 		}
+		// palloc_free_multiple(curr->fd_table,FDT_PAGES);
 		palloc_free_page(curr->fd_table);
 		curr->fd_table = NULL;
 	}

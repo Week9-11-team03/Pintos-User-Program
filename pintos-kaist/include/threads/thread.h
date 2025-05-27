@@ -86,8 +86,10 @@ typedef int tid_t;
  * only because they are mutually exclusive: only a thread in the
  * ready state is on the run queue, whereas only a thread in the
  * blocked state is on a semaphore wait list. */
-#define MAX_FD 512
-#define FDT_PAGES 3
+
+#define FDT_PAGES 1  
+#define MAX_FD (PGSIZE / sizeof(struct file *))  
+
 struct thread {
 	/* Owned by thread.c. */
 	tid_t tid;                          /* Thread identifier. */

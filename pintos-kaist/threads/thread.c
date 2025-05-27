@@ -191,6 +191,9 @@ tid_t thread_create(const char *name, int priority,
 
 	/* Allocate thread. */
 	t = palloc_get_page(PAL_ZERO);
+    if (t == NULL) {
+        return TID_ERROR;  
+    }
 	dprintf("[%p] creating thread. palloc done.\t priority: %d\n", t, priority);
 
 	if (t == NULL)
@@ -204,6 +207,7 @@ tid_t thread_create(const char *name, int priority,
 	#ifdef USERPROG
 		t->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
 		if (t->fd_table == NULL) {
+			palloc_free_page(t);
 			return TID_ERROR;
 		}
 
@@ -212,13 +216,11 @@ tid_t thread_create(const char *name, int priority,
 		}
 
 		t->status_code = 0;
-
 		t->next_fd = 2;
-		// t->fd_table[0] = 0;
-		// t->fd_table[1] = 1;
-		// t->fd_table[2] = 2;
 		
-		list_push_back(&thread_current()->childs, &t->child_elem);
+        struct thread *curr = thread_current();
+        t->parent_process = curr;
+        list_push_back(&curr->childs, &t->child_elem);
 	#endif
 
 	/* Call the kernel_thread if it scheduled.
@@ -238,8 +240,8 @@ tid_t thread_create(const char *name, int priority,
 	thread_unblock(t);
 	dprintf("[%p] thread unblocked \n", t);
 
-	struct thread *curr = thread_current();
-	t->parent_process = curr;
+	// struct thread *curr = thread_current();
+	// t->parent_process = curr;
 	
 	if (threading_started && !intr_context() && t->priority > curr->priority)
 	{

@@ -109,6 +109,10 @@ int open(const char *file_name)
 
 	// File load success.
 	int fd = t->next_fd;	// fd 값 획득
+	
+	if (fd >= MAX_FD) 
+		return -1; 
+
 	t->fd_table[fd] = file; // 파일 테이블에 할당.
 	t->next_fd++;
 
@@ -228,7 +232,14 @@ void seek(int fd, unsigned position)
 
 tid_t fork_ (const char *thread_name, struct intr_frame *f) {
 	// printf("doing fork. %s\n", thread_name);
-	return process_fork(thread_name, f);
+	// return process_fork(thread_name, f);
+    tid_t child_tid = process_fork(thread_name, f);
+    
+    if (child_tid == TID_ERROR) {
+        return -1; 
+    }
+    
+    return child_tid;
 }
 
 int wait (int pid) {
