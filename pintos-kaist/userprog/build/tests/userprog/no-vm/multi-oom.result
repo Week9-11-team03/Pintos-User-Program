@@ -1,2 +1,2 @@
 FAIL
-run: Spawned at least 10 children.: FAILED
+run: should have forked at least 152 times, but 107 times forked: FAILED

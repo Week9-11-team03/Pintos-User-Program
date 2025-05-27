@@ -238,6 +238,10 @@ __do_fork(void *aux)
 	// if (parent->running_file) {
 	// 	current->running_file = file_duplicate(parent->running_file);
 	// }
+	
+	current->next_fd = parent->next_fd;
+
+
 	current->running_file = NULL;
 
 	
@@ -291,6 +295,7 @@ int process_exec(void *f_name)
 	palloc_free_page(file_name);
 	if (!success)
 		return -1;
+
 	/* Start switched process. */
 	do_iret(&_if);
 	NOT_REACHED();
@@ -324,18 +329,18 @@ int process_exec(void *f_name)
 // }
 
 int process_wait(tid_t child_tid) {
-    struct thread *child = thread_get_child(child_tid);
+	struct thread *child = thread_get_child(child_tid);
 
-    if (child == NULL || child->waited)
-        return -1;
+	if (child == NULL) {
+		return -1;
+	}
 
-    child->waited = true;
+	list_remove(&child->child_elem);
+	sema_down(&child->wait_sema);
+	int exit_status = child->status_code;	
+	sema_up(&child->exit_sema);
 
-    sema_down(&child->wait_sema);
-
-    int exit_status = child->status_code;
-    list_remove(&child->child_elem);
-    return exit_status;
+	return exit_status;
 }
 
 
@@ -383,13 +388,13 @@ void process_exit(void)
 			}
 		}
 		palloc_free_page(curr->fd_table);
+		curr->fd_table = NULL;
 	}
-
-	// 부모에게 종료 신호
-	sema_up(&curr->wait_sema);
-
-	process_cleanup(); // 이게 file_close와 무관하게 잘 실행되는지 점검할 필요 있음.
 	
+	process_cleanup(); 
+
+	sema_up(&curr->wait_sema);			// 부모에게 "자식 종료 완료" 신호 전송
+	sema_down(&curr->exit_sema); 		// 부모로부터 "정리 완료" 신호 대기
 }
 
 /* Free the current process's resources. */
@@ -500,12 +505,6 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 static bool
 load(const char *file_name, struct intr_frame *if_)
 {
-	// file_name은 exec()에서 커널로 복사된 문자열이지만, strtok_r은 문자열을 파괴함
-char *fn_copy = palloc_get_page(0);
-if (fn_copy == NULL) return false;
-strlcpy(fn_copy, file_name, PGSIZE);
-
-
 	struct thread *t = thread_current();
 	struct ELF ehdr;
 	struct file *file = NULL;
@@ -521,7 +520,6 @@ strlcpy(fn_copy, file_name, PGSIZE);
 	void *initial_rsp;
 
 	token = strtok_r(file_name, " ", &save_ptr);
-	//token = strtok_r(fn_copy, " ", &save_ptr);
 	while (token != NULL)
 	{
 		argv[argc++] = token;
@@ -536,10 +534,6 @@ strlcpy(fn_copy, file_name, PGSIZE);
 	process_activate(thread_current());
 
 	/* Open executable file. */
-
-	// t->running_file = file = filesys_open(file_name);
-	// file_deny_write(t->running_file);
-
 	file = filesys_open(file_name);
 	if (file == NULL)
 	{
@@ -550,12 +544,6 @@ strlcpy(fn_copy, file_name, PGSIZE);
 	t->running_file = file;
 	file_deny_write(t->running_file);
 
-	if (file == NULL)
-	{
-		printf("load: %s: open failed\n", file_name);
-		goto done;
-	}
-
 	/* Read and verify executable header. */
 	if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\2\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 0x3E // amd64
 		|| ehdr.e_version != 1 || ehdr.e_phentsize != sizeof(struct Phdr) || ehdr.e_phnum > 1024)
@@ -563,8 +551,6 @@ strlcpy(fn_copy, file_name, PGSIZE);
 		printf("load: %s: error loading executable\n", file_name);
 		goto done;
 	}
-	
-
 
 	/* Read program headers. */
 	file_ofs = ehdr.e_phoff;
@@ -681,7 +667,6 @@ strlcpy(fn_copy, file_name, PGSIZE);
 
 done:
 	/* We arrive here whether the load is successful or not. */
-	//palloc_free_page(fn_copy);
 	return success;
 }
 
