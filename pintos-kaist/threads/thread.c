@@ -241,7 +241,7 @@ tid_t thread_create(const char *name, int priority,
 	struct thread *curr = thread_current();
 	t->parent_process = curr;
 	
-	list_push_back(&curr->childs, &t->child_elem);
+	//list_push_back(&curr->childs, &t->child_elem);
 	if (threading_started && !intr_context() && t->priority > curr->priority)
 	{
 		thread_yield();
@@ -484,6 +484,9 @@ init_thread(struct thread *t, const char *name, int priority)
 	list_init(&t->donations);
 	list_init(&t->childs);
 	t->wait_on_lock = NULL;
+
+	strlcpy(t->name, name, sizeof t->name);         // 실행 중 이름
+    strlcpy(t->real_name, name, sizeof t->real_name);  // 처음 이름
 	// t->done = 0;
 	// cond_init(&t->condition);
 	// lock_init(&t->lock);

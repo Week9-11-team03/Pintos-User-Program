@@ -31,7 +31,7 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-
+#define NAME_LEN 16
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -98,6 +98,8 @@ struct thread {
 	int priority;                       /* Priority. */
 	int origin_priority;                       /* Priority. */
 	int64_t local_tick;
+	char real_name[NAME_LEN];
+	bool waited;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */

@@ -58,10 +58,16 @@ tid_t process_create_initd(const char *file_name)
 	strlcpy(fn_copy, file_name, PGSIZE);
 
 	/* Create a new thread to execute FILE_NAME. */
-
-	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
+	char temp_name[16];
+	strlcpy(temp_name, file_name, sizeof(temp_name));
+	
+	char *save_ptr;
+	char *prog_name = strtok_r(temp_name, " \t", &save_ptr);
+	
+	tid = thread_create(prog_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page(fn_copy);
+
 	return tid;
 }
 
@@ -299,23 +305,40 @@ int process_exec(void *f_name)
  *
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
-int process_wait(tid_t child_tid)
-{
-	// struct list_elem *e = list_begin(&thread_current()->childs);
-	struct thread *child = thread_get_child(child_tid); 
+// int process_wait(tid_t child_tid)
+// {
+// 	// struct list_elem *e = list_begin(&thread_current()->childs);
+// 	struct thread *child = thread_get_child(child_tid); 
 
-	if (child) {
-		// thread_join(child);
-		sema_down(&child->wait_sema);		// 자식 종료 대기
+// 	if (child) {
+// 		// thread_join(child);
+// 		sema_down(&child->wait_sema);		// 자식 종료 대기
 
-		int exit_status = child->status_code;
-		list_remove(&child->child_elem);  // 대기가 완료된 리스트는 삭제해야 후환이 없습니다.
+// 		int exit_status = child->status_code;
+// 		list_remove(&child->child_elem);  // 대기가 완료된 리스트는 삭제해야 후환이 없습니다.
 
-		return exit_status; // 종료 코드는 여기에서 리턴됩니다.
-	}
-	// child를 찾을 수 없는 경우.
-	return -1;
+// 		return exit_status; // 종료 코드는 여기에서 리턴됩니다.
+// 	}
+// 	// child를 찾을 수 없는 경우.
+// 	return -1;
+// }
+
+int process_wait(tid_t child_tid) {
+    struct thread *child = thread_get_child(child_tid);
+
+    if (child == NULL || child->waited)
+        return -1;
+
+    child->waited = true;
+
+    sema_down(&child->wait_sema);
+
+    int exit_status = child->status_code;
+    list_remove(&child->child_elem);
+    return exit_status;
 }
+
+
 
 // void thread_join(struct thread *child)
 // {
@@ -477,6 +500,12 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 static bool
 load(const char *file_name, struct intr_frame *if_)
 {
+	// file_name은 exec()에서 커널로 복사된 문자열이지만, strtok_r은 문자열을 파괴함
+char *fn_copy = palloc_get_page(0);
+if (fn_copy == NULL) return false;
+strlcpy(fn_copy, file_name, PGSIZE);
+
+
 	struct thread *t = thread_current();
 	struct ELF ehdr;
 	struct file *file = NULL;
@@ -492,6 +521,7 @@ load(const char *file_name, struct intr_frame *if_)
 	void *initial_rsp;
 
 	token = strtok_r(file_name, " ", &save_ptr);
+	//token = strtok_r(fn_copy, " ", &save_ptr);
 	while (token != NULL)
 	{
 		argv[argc++] = token;
@@ -507,7 +537,17 @@ load(const char *file_name, struct intr_frame *if_)
 
 	/* Open executable file. */
 
-	t->running_file = file = filesys_open(file_name);
+	// t->running_file = file = filesys_open(file_name);
+	// file_deny_write(t->running_file);
+
+	file = filesys_open(file_name);
+	if (file == NULL)
+	{
+		printf("load: %s: open failed\n", file_name);
+		goto done;
+	}
+
+	t->running_file = file;
 	file_deny_write(t->running_file);
 
 	if (file == NULL)
@@ -523,6 +563,8 @@ load(const char *file_name, struct intr_frame *if_)
 		printf("load: %s: error loading executable\n", file_name);
 		goto done;
 	}
+	
+
 
 	/* Read program headers. */
 	file_ofs = ehdr.e_phoff;
@@ -627,18 +669,19 @@ load(const char *file_name, struct intr_frame *if_)
 
 	success = true;
 
-	strlcpy(t->name, file_name, strlen(file_name) + 1);
+	//strlcpy(t->name, file_name, strlen(file_name) + 1);
 
 	//t->next_fd = 2; // init fd ptr
 	
 	// 파일 디스크립터 테이블 초기화
-	for (int i = 0; i < MAX_FD; i++) {
-		t->fd_table[i] = NULL;
-	}
-	t->next_fd = 2; // stdin(0), stdout(1) 이후부터 할당
+	// for (int i = 0; i < MAX_FD; i++) {
+	// 	t->fd_table[i] = NULL;
+	// }
+	// t->next_fd = 2; // stdin(0), stdout(1) 이후부터 할당
 
 done:
 	/* We arrive here whether the load is successful or not. */
+	//palloc_free_page(fn_copy);
 	return success;
 }
 

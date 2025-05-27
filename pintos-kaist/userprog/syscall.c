@@ -14,9 +14,12 @@
 #include "filesys/filesys.h"
 #include "threads/synch.h"
 #include "filesys/file.h"
+#include "threads/palloc.h"
+#include <string.h>
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
+//void check_string_ptr(const char *s);
 
 static struct lock filesys_lock;
 
@@ -81,7 +84,8 @@ void halt()
 void exit(int status)
 {
 	thread_current()->status_code = status;
-	printf("%s: exit(%d)\n", thread_name(), status);
+	//printf("%s: exit(%d)\n", thread_name(), status);
+	printf("%s: exit(%d)\n", thread_current()->real_name, status);
 	thread_exit(); // this leads to process exit.
 }
 
@@ -97,14 +101,16 @@ int open(const char *file_name)
 
 	if (file == NULL) // 실패 시 -1 리턴.
 	{
+		
 		return -1;
 	}
 
 	if (t->next_fd >= MAX_FD) {
+		
 		file_close(file);
 		return -1;
 	}
-
+	
 	// File load success.
 	int fd = t->next_fd;	// fd 값 획득
 	t->fd_table[fd] = file; // 파일 테이블에 할당.
@@ -209,7 +215,8 @@ unsigned tell(int fd)
 		lock_release(&filesys_lock);
 		return off;
 	}
-	return NULL;
+	//return NULL;
+	return -1;
 }
 
 void seek(int fd, unsigned position)
@@ -228,6 +235,58 @@ tid_t fork_ (const char *thread_name, struct intr_frame *f) {
 	// printf("doing fork. %s\n", thread_name);
 	return process_fork(thread_name, f);
 }
+
+// int exec(const char *file) {
+// 	check_string_ptr(file);
+
+// 	// 1. 커널에서 사용할 공간 할당
+// 	char *kfile = palloc_get_page(0);
+// 	if (kfile == NULL)
+// 		exit(-1);
+
+// 	// 2. 유저 메모리에서 안전하게 문자열 복사
+// 	int i = 0;
+// 	while (i < PGSIZE) {
+// 		if (!is_user_vaddr(file + i) || pml4_get_page(thread_current()->pml4, file + i) == NULL) {
+// 			palloc_free_page(kfile);
+// 			exit(-1);
+// 		}
+// 		kfile[i] = file[i];
+// 		if (file[i] == '\0') break;
+// 		i++;
+// 	}
+
+// 	// 3. NULL 종단을 찾지 못했다면 잘못된 문자열
+// 	if (i == PGSIZE) {
+// 		palloc_free_page(kfile);
+// 		exit(-1);
+// 	}
+
+// 	// 4. 커널 공간 문자열로 실행
+// 	int result = process_exec(kfile);  // 내부에서 kfile은 자동 free됨
+	
+// 	NOT_REACHED();
+// }
+
+int exec (const char *cmd_line) {
+
+	check_user_ptr(cmd_line);
+
+	char *cmd_copy = palloc_get_page(PAL_ZERO);
+	if (cmd_copy == NULL) {
+		return -1;
+	}
+	
+	strlcpy(cmd_copy, cmd_line, PGSIZE);
+
+	if (process_exec(cmd_copy) == -1) {
+		exit(-1);
+	}
+
+	NOT_REACHED();
+}
+
+
 
 int wait (int pid) {
 	// printf("waiting pid: %d\n", pid);
@@ -280,6 +339,9 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			break;
 		case SYS_WAIT:
 			f->R.rax = wait(f->R.rdi);
+			break;
+		case SYS_EXEC:
+		    exec(f->R.rdi); 
 			break;
 		default:
 			exit(-1);
