@@ -10,9 +10,6 @@
 #include "vm/vm.h"
 #endif
 
-// Project 2 : FDT 상수 정의
-#define FDT_PAGES 3
-#define FDCOUNT_LIMIT (FDT_PAGES * (1 << 9))	// 페이지당 512개 엔트리
 
 /* States in a thread's life cycle. */
 enum thread_status {
@@ -89,7 +86,8 @@ typedef int tid_t;
  * only because they are mutually exclusive: only a thread in the
  * ready state is on the run queue, whereas only a thread in the
  * blocked state is on a semaphore wait list. */
-#define MAX_FD 64
+#define MAX_FD 512
+#define FDT_PAGES 3
 struct thread {
 	/* Owned by thread.c. */
 	tid_t tid;                          /* Thread identifier. */
@@ -125,14 +123,16 @@ struct thread {
 	struct thread *parent_process; 
 	struct list childs;
 	struct list_elem child_elem;
+
+	struct condition condition;
+	struct lock lock;
+	int done;
 	
 	struct semaphore wait_sema;
 	struct semaphore fork_sema;
+	struct semaphore exec_sema;
 	struct semaphore exit_sema;
-
-	// struct condition condition;
-	// struct lock lock;
-	// int done;
+	int is_exec_loaded;
 };
 
 /* If false (default), use round-robin scheduler.
