@@ -110,8 +110,6 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	else {
 		return TID_ERROR;
 	}
-
-	// return child_tid;
 }
 
 struct thread *thread_get_child(const tid_t child_tid) {
