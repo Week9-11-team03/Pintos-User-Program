@@ -219,10 +219,9 @@ __do_fork(void *aux)
 	if (!supplemental_page_table_copy(&current->spt, &parent->spt))
 		goto error;
 #else
-	// printf("copying page table\n");
 	if (!pml4_for_each(parent->pml4, duplicate_pte, parent)){
-        // printf("fork failed: page duplication error\n");
-        current->status_code = -1;  // ✅ 실패 상태 설정
+        //printf("fork failed: page duplication error\n");
+        current->status_code = -1;  
 		goto error;
 	}
 #endif
@@ -270,9 +269,9 @@ __do_fork(void *aux)
 		do_iret(&if_);
 	// }
 error:
-	//current->status_code = -1;
+	current->status_code = -1;
 	sema_up(&current->fork_sema);
-	exit(-2);
+	exit(-1);
 }
 
 /* Switch the current execution context to the f_name.
